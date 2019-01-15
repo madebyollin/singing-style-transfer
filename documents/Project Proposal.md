@@ -106,6 +106,7 @@ Collect a small parallel dataset of aligned acapellas from YouTube / SoundCloud 
 #### Naive Models
 
 Implement components that:
+
 - Use patchmatch or a similar naive algorithm to copy slices from the style spectrogram to the target spectrogram. This will (hopefully) match low-level characteristics like reverb and vibrato.
 - Perform spectrum-conditioned amplitude matching (training a simple, shallow model that predicts the average amplitude across a slice based on the frequency distribution of that slice) and uses this to renormalize the input audio.
 - Perform global spectral envelope matching (re-weighting harmonics in the content according to their average amplitude in the style data) to produce plausible output (will still sound mostly like the source audio).
