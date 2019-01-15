@@ -1,8 +1,29 @@
-# Singing Style Transfer
+<!--\begin{centering}
+{\small Andrew Li, Joseph Zhong, Ollin Boer Bohan}
+\end{centering}
+
+\begin{centering}
+\begin{minipage}{.5\linewidth}
+{\large\textbf{Abstract}}\vspace{0.5em}
+Although neural style transfer for images has been highly successful, these algorithms have not yet been successfully applied to the audio domain. We propose to attempt this task in order to allow for style transfer of audio (focusing specifically on monophonic, singing audio) as a useful artistic tool during music production.
+\end{minipage}
+\end{centering}
+\vspace{0.5em}-->
+
+\begin{centering}
+
+{\Large\sc\textbf{Singing Style Transfer}}
+
+{\small Andrew Li, Joseph Zhong, Ollin Boer Bohan}
+
+\end{centering}
+
+\vspace{1em}
 
 ## Abstract
 
-Although neural style transfer for images has been highly successful, these algorithms have not yet been successfully applied to the audio domain. We propose to attempt this task in order to allow for style transfer of audio (focusing specifically on monophonic, singing audio) as a useful artistic tool during music production.
+Although neural style transfer for images has been highly successful, these algorithms have not yet been successfully applied to the audio domain. We propose to attempt this task in order to allow for style transfer of audio (focusing specifically on monophonic, singing audio) as a useful artistic tool for vocal processing in music production.
+
 
 ## Project Scenario and Goals
 
@@ -10,22 +31,58 @@ Although neural style transfer for images has been highly successful, these algo
 
 A user (music producer / artist) submits a *style* audio file (assumed to be an acapella, a.k.a. a soloed sung vocal) and a *content* audio file to the app. The style from the *style* audio file is applied to the content from the *content* audio file, the result is converted back to a waveform representation, and the transferred audio is presented back to the user.  If the result is low quality, it may only be used for inspiration or as a backing track, as with current-day vocoders; if the result is very good, it could be used for enhancing a lead vocal to match a professionally edited reference vocal.
 
-This task (singing style transfer) is analogous to the task of image style transfer pioneered in Gatys et al (2015) and related to the task of image-to-image translation developed in Pix2Pix, MUNIT, and others, but it has proved much less tractable so far.
+This task (singing style transfer) is analogous to the task of image style transfer pioneered in Gatys et al (2015) and related to the task of image-to-image translation developed in Pix2Pix, MUNIT, and others, but it has proved much less tractable so far. The primary constraint is on the quality of the generated audio; the system does not need to be cheap or fast, but it must produce moderate-to-high-quality results in order to have value as a tool for production.
 
 ## Design Strategy
 
 > Provide a description of the overall design, its major components, and their purpose. Include an architectural diagram (showing how the components interact) if appropriate.
 
-The overall app consists of a simple web frontend allowing submission of audio to a python webserver running the main style transfer module. The main style transfer module will be implemented using librosa for audio conversion and (hopefully) Keras for the neural net. The network itself may require several versions to settle on a successful architecture, but an initial implementation would be an image-to-image GAN operating on slices of the input audio, using a spectrogram feature representation. We can gradually add in greater hand-engineering of portions (e.g. pitch recognition, sibilant recognition, EQ matching) to improve the quality of the generated output.
+An overall app would consist of a simple web frontend allowing submission of audio to a python webserver running the main style transfer module. The main style transfer module would be implemented using `librosa` for audio conversion and some combination of hand-engineered-processing (using `librosa` and other python libraries for audio/image processing) and neural-network based processing (using Keras, PyTorch or TensorFlow).  Most processing will occur in the spectrogram domain.
 
-> Tk architecture diagram
->
+#### Dataset:
+
+We will likely need to collect:
+
+* A (small) parallel dataset of aligned audio files containing the same content with different styles. This allows us to develop an understanding for the components of style in order to refine our processing modules, and also provides a testing mechanism (since if we have two content-equivalent files $a,b$, each cut in half to form $a_1, a_2,b_1,b_2$, style transfer with style $a_1$ and content $b_2$ should produce $a_2$). We can build this dataset using covers available on YouTube and SoundCloud. For example, here are three different spectrograms of Ariana Grande - One More Time (original, and two covers) collected during our early exploration:
+
+  \vspace{0.5em}\begin{center}
+  \includegraphics[width=0.5\textwidth]{report_design_data.jpg}
+  \end{center}    
+
+* A larger non-parallel dataset of acapellas for training learned-processing modules. This is *mostly* already collected (we have 32 high-quality acapellas available from the AcapellaBot project), but we could add to it / clean it up a bit.
+
+#### Non-Learned Processing:
+
+Hand-engineered processing modules will likely include:
+
+- Low-level style transfer (including transfer of vibrato and reverb tails) so that the shape of individual harmonics matches the style audio.
+- Sound-conditioned spectral envelope matching and amplitude matching (including recovery of missing harmonics or high-frequency detail) to make the dynamics and mixing for vocal sounds (sibilants, vowels, in/exhalations) match those in the style audio.
+- Global smoothed spectral envelope matching to achieve similar overall mixing.
+
+#### Learned Processing:
+
+Neural-network processing modules will likely include:
+
+- Spectrogram-domain post-processing to remove artifacts (particularly with respect to output phase)
+- Audio-domain post-processing to remove artifacts and improve plausibility of the generated audio.
+
+The networks may require several versions to settle on a successful architecture, but an initial implementation would be an image-to-image GAN operating on slices of the input audio, using a spectrogram feature representation. It is highly probable that adversarial networks will be required to generate plausible, sharp output. As the project progresses, we may be able to replace or subsume hand-engineered components by neural networks once we understand the subproblems better.
+
+#### Frontend
+
+The frontend is a much lower priority than the backend (since even a command line tool would be useful), but if we are able to generate results an ideal frontend would be something like:
+
+\vspace{0.5em}\begin{center}
+\includegraphics[width=0.75\textwidth]{report_design_frontend.jpg}
+\end{center}    
 
 ## Design Unknowns / Risks
 
 > Describe the features of your design that your group is least familiar with and with which there is no prior experience. These are the issues to tackle first!
 
-The primary challenge is the development of a neural net architecture capable of robust style transfer. I have prior experience with all of the software used for the project. Although I've implemented neural nets for audio processing before, and I've tested naive image-based style transfer, neither myself (nor anyone else) has yet developed a *successful and robust* audio style transfer architecture for singing audio.
+The primary challenge is the development of a qualitatively good style transfer mechanism (including developing a good conceptual description of what style *is* with respect to audio). 
+
+Although we've implemented neural nets for audio processing before, and have tested naive image-based style transfer, neither us (nor anyone else) have yet developed an audio style transfer architecture for singing audio that products *intelligible* and *plausible* results.
 
 Example approaches:
 
@@ -44,30 +101,31 @@ Example approaches:
 
 #### Data collection:
 
-- In addition to the existing dataset of professional acapellas used for AcapellaBot, collect a dataset of amateur acapella covers from YouTube and SoundCloud. This allows us to a) train distribution-to-distribution networks on amateur $\iff$ professional vocal translation for voice enhancement, as well as (time permitting, through manual alignment) build a smaller corpus of *aligned* audio between professional acapellas and covers of them. There is currently no existing good parallel corpus for singing audio, so this alone is potentially a meaningful contribution to the field.
+Collect a small parallel dataset of aligned acapellas from YouTube / SoundCloud for testing (see **Dataset** under **Design Strategy** above). There is currently no existing good parallel corpus for singing audio, so this alone is potentially a meaningful contribution to the field.
 
 #### Naive Models
 
-- Implement a hand-coded, naive model that:
-    - Performs spectral envelope matching (re-weighting harmonics in the content according to their average amplitude in the style data) to produce plausible output (will still sound mostly like the source audio). This will match the high level spectra of the input and style while preserving intelligibility.
-    - Performs spectrum-conditioned amplitude matching (training a simple, shallow model that predicts the average amplitude across a slice based on the frequency distribution of that slice) and uses this to renormalize the input audio.
-    - Uses patchmatch or a similar naive algorithm to copy slices from the style spectrogram to the target spectrogram. This will (hopefully) match low-level characteristics like reverb and vibrato.
+Implement components that:
+- Use patchmatch or a similar naive algorithm to copy slices from the style spectrogram to the target spectrogram. This will (hopefully) match low-level characteristics like reverb and vibrato.
+- Perform spectrum-conditioned amplitude matching (training a simple, shallow model that predicts the average amplitude across a slice based on the frequency distribution of that slice) and uses this to renormalize the input audio.
+- Perform global spectral envelope matching (re-weighting harmonics in the content according to their average amplitude in the style data) to produce plausible output (will still sound mostly like the source audio).
 
-### Neural Models
+### Neural Models & Post-processing
 
 - Test existing image-to-image translation models on the spectrogram representation (potentially as a post-processing step on the naive model). Good candidates:
     - https://github.com/NVIDIA/FastPhotoStyle
     - https://github.com/lengstrom/fast-style-transfer
-
-### Advanced Models
-
-- Try anything clever that comes up
+- Improve our pipeline to preserve phase information throughout the process, and figure out the set of FFT parameters and post-conversion parameters that maximize output quality.
+- Train a spectrogram post-processing network to reduce artifacts.
+- Train an audio post-processing network to reduce artifacts.
 
 ## Evaluation
 
 > Explain how you will evaluate success -- what will you measure and how will you display it in the final report? What tradeoffs will you evaluate?
 
-The primary evaluation metric will be qualitative–does the result sound **a)** intelligible (the content is preserved) and **b)** plausible (the style is transferred)? If we develop a moderately successful method, we can potentially conduct broader testing comparing mean opinion scores of our method to baselines.
+The primary evaluation metric will be qualitative–does the result sound **a)** intelligible (the content is preserved) and **b)** plausible (the style is transferred)? For songs within our parallel dataset we can compare against the gold-standard stylized output (see **dataset** above), but the most important test for our program will be qualitative evaluation on unseen data.
+
+If we develop a moderately successful method, we can potentially conduct broader testing comparing mean opinion scores of our method to baselines.
 
 ## Related work
 
