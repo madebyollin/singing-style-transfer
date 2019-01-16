@@ -107,6 +107,7 @@ Collect a small parallel dataset of aligned acapellas from YouTube / SoundCloud 
 
 Implement components that:
 
+- Extracts the underlying pitch envelope (we can use an existing trained network like https://github.com/marl/crepe); this information is useful for performing over tasks
 - Use patchmatch or a similar naive algorithm to copy slices from the style spectrogram to the target spectrogram. This will (hopefully) match low-level characteristics like reverb and vibrato.
 - Perform spectrum-conditioned amplitude matching (training a simple, shallow model that predicts the average amplitude across a slice based on the frequency distribution of that slice) and uses this to renormalize the input audio.
 - Perform global spectral envelope matching (re-weighting harmonics in the content according to their average amplitude in the style data) to produce plausible output (will still sound mostly like the source audio).
@@ -119,6 +120,19 @@ Implement components that:
 - Improve our pipeline to preserve phase information throughout the process, and figure out the set of FFT parameters and post-conversion parameters that maximize output quality.
 - Train a spectrogram post-processing network to reduce artifacts.
 - Train an audio post-processing network to reduce artifacts.
+
+#### Schedule:
+
+- **Week 1:** Write proposal. Done!
+- **Week 2:**
+    - [1h] Collect one or two more parallel examples for reference
+    - [1h] Set up skeleton code that just performs identity transform on the content and ignores the style
+    - [1h] Write global EQ matching and test it
+    - [1h] Fix the skeleton code to preserve the phase, or at least do it in mono
+- **Week 3-5:**
+    - TBD
+- **Week 5-10:**
+    - TBD
 
 ## Evaluation
 
