@@ -125,10 +125,11 @@ Implement components that:
 
 - **Week 1:** Write proposal. Done!
 - **Week 2:**
-    - [1h] Collect one or two more parallel examples for reference
-    - [1h] Set up skeleton code that just performs identity transform on the content and ignores the style
-    - [1h] Write global EQ matching and test it
-    - [1h] Fix the skeleton code to preserve the phase, or at least do it in mono
+    - [ ] [1h] Collect one or two more parallel examples for reference
+    - [x] [1h] Set up skeleton code that just performs identity transform on the content and ignores the style
+    - [ ] [1h] Write global EQ matching and test it
+    - [ ] [1h] 
+    - [ ] [1h] Fix the skeleton code to preserve the phase, or at least do it in mono
 - **Week 3-5:**
     - TBD
 - **Week 5-10:**
