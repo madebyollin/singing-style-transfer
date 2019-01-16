@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import numpy as np
+
 import conversion
 import console
 
@@ -8,8 +10,13 @@ def global_eq_match(content, style):
     :param content:
     :param style:
     """
+    content_mean_freq = np.mean(content, axis=(1, 2))
+    style_mean_freq = np.mean(style, axis=(1, 2))
 
-    return style
+    weights = style_mean_freq / content_mean_freq
+    stylized = (content.T * weights).T
+    assert stylized.shape == content.shape
+    return stylized
 
 def stylize(content, style):
     stylized = global_eq_match(content, style)
@@ -29,7 +36,6 @@ def main():
     content_audio, content_sample_rate = conversion.file_to_audio(content_path)
     content_img, content_phase = conversion.audio_to_spectrogram(content_audio, fft_window_size=1536)
 
-    import pdb; pdb.set_trace()
     stylized_img = stylize(content_img, style_img)
     stylized_audio = conversion.amplitude_to_audio(stylized_img, 1536)
 
