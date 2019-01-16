@@ -62,33 +62,31 @@ def audio_to_spectrogram(audio, fft_window_size):
         phase.append(np.imag(spectrogram))
     return np.stack(amplitude, axis=-1), np.stack(phase, axis=-1)
 
-
+# TODO: This needs to fix this.
 def amplitude_to_audio(channel_amplitudes, fft_window_size, phase_iterations=10):
     # phase reconstruction with successive approximation
     # credit to https://dsp.stackexchange.com/questions/3406/reconstruction-of-audio-signal-from-its-absolute-spectrogram/3410#3410
-    audio = []
+    audio = [None, None]
     # if audio is mono, add a channel dimension anyway for convenience
     if channel_amplitudes.shape[-1] != 2:
         channel_amplitudes = np.dstack([channel_amplitudes] * 2)
-    for i in range(2):
-        channel = channel_amplitudes[:, :, i]
-        console.stats(channel, "channel")
-        # undo log1p
-        amplitude = np.exp(channel) - 1
-        channel_audio = None
-        for i in range(phase_iterations):
-            if channel_audio is not None:
-                # at each step, create a new spectrogram using the current audio
-                reconstruction = librosa.stft(channel_audio, fft_window_size)
-            else:
-                # start with a random spectrogram [0.0, 1.0] + 1j * [-pi, pi]
-                reconstruction = np.random.random_sample(amplitude.shape) + 1j * (
-                    2 * np.pi * np.random.random_sample(amplitude.shape) - np.pi
-                )
+
+    reconstruction = np.random.random_sample(channel_amplitudes[:, :, 0].shape) + 1j * (
+        2 * np.pi * np.random.random_sample(channel_amplitudes[:, :, 0].shape) - np.pi
+    )
+    for i in range(phase_iterations):
+        for j in range(2):
+            channel = channel_amplitudes[:, :, j]
+            console.stats(channel, "channel")
+            # undo log1p
+            amplitude = np.exp(channel) - 1
             # combine target amplitude and current phase to get the next audio iteration
             complex_spectrogram = amplitude * np.exp(1j * np.angle(reconstruction))
             channel_audio = librosa.istft(complex_spectrogram)
-        audio.append(channel_audio)
+
+            # at each step, create a new spectrogram using the current audio
+            reconstruction = librosa.stft(channel_audio, fft_window_size)
+            audio[j] = channel_audio
     if len(audio) != 2:
         audio *= 2  # double the list
     return np.clip(np.array(audio), -1, 1)
