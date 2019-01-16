@@ -2,17 +2,24 @@
 import conversion
 import console
 
-style_path = "sample/style.mp3"
-content_path = "sample/content.mp3"
-stylized_path = "sample/stylized.mp3"
-
-style_img = conversion.file_to_image(style_path)
-content_img = conversion.file_to_image(content_path)
-
-def stylize(style, content):
+def global_eq_match(content, style):
     return content
 
-stylized = stylize(style_img, content_img)
+def stylize(content, style):
+    stylized = global_eq_match(content, style)
+    return stylized
 
-conversion.image_to_file(stylized, stylized_path)
-console.log("done! saved to", stylized_path)
+def main():
+    style_path = "sample/style.mp3"
+    content_path = "sample/content.mp3"
+    stylized_path = "sample/stylized.mp3"
+
+    style_img = conversion.file_to_image(style_path)
+    content_img = conversion.file_to_image(content_path)
+    stylized = stylize(content_img, style_img)
+
+    conversion.image_to_file(stylized, stylized_path)
+    console.log("done! saved to", stylized_path)
+
+if __name__ == "__main__":
+    main()
