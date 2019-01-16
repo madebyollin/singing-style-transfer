@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import scipy
 import numpy as np
 
 import conversion
@@ -14,6 +15,9 @@ def global_eq_match(content, style):
     style_mean_freq = np.mean(style, axis=(1, 2))
 
     weights = style_mean_freq / content_mean_freq
+    weights = np.clip(weights, 0, 2)
+    weights = scipy.ndimage.filters.gaussian_filter1d(weights, 10)
+
     stylized = (content.T * weights).T
     assert stylized.shape == content.shape
     return stylized
