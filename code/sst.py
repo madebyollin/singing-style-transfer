@@ -7,7 +7,6 @@ import console
 
 def global_eq_match(content, style):
     """
-
     :param content:
     :param style:
     """
@@ -23,6 +22,7 @@ def global_eq_match(content, style):
     return stylized
 
 def stylize(content, style):
+    stylized = content
     stylized = global_eq_match(content, style)
     return stylized
 
@@ -41,7 +41,7 @@ def main():
     content_img, content_phase = conversion.audio_to_spectrogram(content_audio, fft_window_size=1536)
 
     stylized_img = stylize(content_img, style_img)
-    stylized_audio = conversion.amplitude_to_audio(stylized_img, 1536)
+    stylized_audio = conversion.amplitude_to_audio(stylized_img, fft_window_size=1536, phase_iterations=20, phase=content_phase)
 
     # Save stylized spectrogram and audio.
     conversion.image_to_file(stylized_img, stylized_img_path)
