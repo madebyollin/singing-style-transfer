@@ -1,3 +1,40 @@
+# Tasks
+
+
+
+- [ ] Take notes on stylistic differences between Rolling in the Deep acapellas (in `data/aligned/rolling_in_the_deep`) to see if we're missing any elements of style
+
+- [ ] Take notes on stylistic differences between Young and Beautiful acapellas (in `data/aligned/young_and_beautiful`) to see if we're missing any elements of style
+
+- [ ] Implement super-resolution (recovery of high-frequency detail)
+
+    - [ ] Implement fundamental frequency detection (rule-based or learned)
+    - [ ] Implement harmonic super-resolution (duplicating the fundamental curve up to higher octaves... this may be doable with some fancy fourier transform magic - using a saw wave instead of a sin wave somehow - but we can also just do it graphically).
+    - [ ] Implement sibilant detection / super-resolution if necessary
+    - [ ] Build this into the global spectral envelope matching part of the pipeline.
+
+    - [ ] While we're improving spectral envelope matching, we should probably be using a maximum filter when blurring instead of a gaussian, to represent "this is the loudest that x frequency range should be" rather than "this is the average loudness x frequency range should have", and filling in missing information with the super-resolved version.
+
+- [ ] Test out neural-network image-to-image approaches (e.g. the fast photo style transfer thing) so that we have some baseline of what results modern end-to-end systems yield
+
+    - [ ] https://github.com/NVIDIA/FastPhotoStyle
+    - [ ] https://github.com/msracver/Deep-Image-Analogy
+
+# Questions
+
+Things we should probably answer to understand the problem better
+
+- [ ] What does the phase look like in a spectrogram? Is it easy-to-predict, or is it random?
+
+# Elements of Style
+
+Things noticed while comparing aligned spectrograms. A successful style transfer algorithm should probably transfer most of these.
+
+- [ ] High frequency detail is different (for different styles, there may be a lot of high-frequency information present, or it may be lost; we should recover it)
+- [ ] Global spectral envelopes are different (for different styles, different frequency ranges will, on average, be brighter or darker; we should match it)
+- [ ] Amplitude of speech components are different (for different styles, sibilants/vowels/breathing will have different relative loudness; we should match them)
+- [ ] Low-level details are different (for different styles, reverb and vibrato will be more or less present)
+
 # Singing Style Transfer
 
 ## The Task
