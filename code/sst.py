@@ -5,7 +5,42 @@ from scipy.ndimage.morphology import grey_dilation, grey_erosion
 
 import conversion
 import console
-#import ipdb
+import cv2
+import ipdb
+
+def fundamental_to_harmonics(fundamental, amplitude):
+    harmonics = np.zeros(fundamental.shape)
+    # step one is to get a suitably accurate estimate of the fundamental pitch 
+    # the *good* way to do this is lots of subpixel sampling at each audible harmonic to extract the maximum amount of information
+    # but that's a lot of work
+    # so I'm doing it the lazy way for now
+    # we want these two things for line drawing
+    fundamental_freqs = np.zeros(fundamental.shape[1]) # one per timestep
+    fundamental_amps  = np.zeros(fundamental.shape[1]) # one per timestep
+
+    # so lets first assume the fundamental is the amplitude-weighted average
+    MAX_FREQ = 40
+    coefficients = np.array(range(MAX_FREQ))
+    fundamental_cropped = fundamental[:MAX_FREQ,:,0]
+    denominators = np.sum(fundamental_cropped, axis=0)
+    fundamental_amps = denominators[:] / np.max(denominators)
+    fundamental_weighted = coefficients[:,np.newaxis] * fundamental_cropped
+    console.stats(fundamental_weighted)
+    #ipdb.set_trace()
+    # and compute it for every timestep
+    for t in range(fundamental.shape[1]):
+        if denominators[t] == 0:
+            fundamental_t = 0
+        else:
+            fundamental_t = np.sum(fundamental_weighted[:,t]) / denominators[t]
+        # hack to make it continuous across gaps
+        if t + 1 != fundamental.shape[1]:
+            fundamental_weighted[int(fundamental_t), t+1] += 0.05
+            denominators[t+1] += 0.05
+        fundamental_freqs[t] = fundamental_t
+        # TODO: actually supersampling
+        harmonics[int(fundamental_t), t,:] = fundamental_amps[t]
+    return harmonics
 
 def extract_fundamental(amplitude):
     fundamental = np.zeros(amplitude.shape)
