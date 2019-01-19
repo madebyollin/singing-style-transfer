@@ -8,6 +8,33 @@ import console
 import cv2
 import ipdb
 
+def draw_harmonic_slice(spectrogram, t, f0, f1, alpha0, alpha1):
+    # draw a 1px column at t corresponding to movement from f0 to f1
+    # with brightness alpha
+    # sigh
+    width = 1
+    # antialiasing function
+    def sigma(distance):
+        #return 1
+       return np.clip(width / 2 - distance + 0.5, 0, 1) 
+    # make sure that f0 <= f1
+    #if f1 < f0:
+    #    tmp = f1
+    #    f1 = f0
+    #    f0 = tmp
+    line_norm_squared = 1 + (f1 - f0) ** 2
+    for n_p in range(int(abs(f1 - f0) + 2)):
+        p = int(min(f1,f0)) + n_p
+        if p >= spectrogram.shape[0]:
+            continue
+        dot_product = 1 + (f1 - f0) * (p - f0)
+        distance_to_line = np.sqrt(abs(1 + (p - f0)**2 - (dot_product ** 2) / line_norm_squared))
+        aa_alpha = sigma(distance_to_line)
+        blending_alpha = np.clip(abs(dot_product / line_norm_squared),0,1)
+        blended_alpha = (1 - blending_alpha) * alpha0 + blending_alpha * alpha1
+        spectrogram[p,max(0,t-1)] = (1 - aa_alpha) * blended_alpha
+        spectrogram[p,t] = aa_alpha * blended_alpha
+
 def fundamental_to_harmonics(fundamental, amplitude):
     harmonics = np.zeros(fundamental.shape)
     # step one is to get a suitably accurate estimate of the fundamental pitch 
@@ -39,7 +66,15 @@ def fundamental_to_harmonics(fundamental, amplitude):
             denominators[t+1] += 0.05
         fundamental_freqs[t] = fundamental_t
         # TODO: actually supersampling
-        harmonics[int(fundamental_t), t,:] = fundamental_amps[t]
+        #harmonics[int(fundamental_t), t,:] = fundamental_amps[t]
+        s = max(0,t-1)
+        # cv2.line(harmonics, (s, fundamental_freqs[s]), (t, fundamental_freqs[t]), (0,int(255 * fundamental_amps[t]),0), 2)
+        # every python line drawing library is garbage that only
+        # works at integer coordinates
+        # so here we are
+        if fundamental_amps[s] > 0 and fundamental_amps[t] > 0:
+            for i in range(1, 20):
+                draw_harmonic_slice(harmonics, t, fundamental_freqs[s]*i, fundamental_freqs[t]*i, fundamental_amps[s], fundamental_amps[t])
     return harmonics
 
 def extract_fundamental(amplitude):
