@@ -1,19 +1,19 @@
 # Tasks
 
-
-
 - [ ] Take notes on stylistic differences between Rolling in the Deep acapellas (in `data/aligned/rolling_in_the_deep`) to see if we're missing any elements of style
 
 - [ ] Take notes on stylistic differences between Young and Beautiful acapellas (in `data/aligned/young_and_beautiful`) to see if we're missing any elements of style
 
 - [ ] Implement super-resolution (recovery of high-frequency detail)
 
-    - [ ] Implement fundamental frequency detection (rule-based or learned)
-    - [ ] Implement harmonic super-resolution (duplicating the fundamental curve up to higher octaves... this may be doable with some fancy fourier transform magic - using a saw wave instead of a sin wave somehow - but we can also just do it graphically).
+    - [x] Implement fundamental frequency detection (rule-based or learned)
+    - [x] Implement harmonic super-resolution (duplicating the fundamental curve up to higher octaves... this may be doable with some fancy fourier transform magic - using a saw wave instead of a sin wave somehow - but we can also just do it graphically).
+    - [ ] Add multiple-harmonic sampling to fundamental detection so it's more accurate (right now it's sorta glitchy)
+    - [ ] Add fundamental cloning to super-res (right now it's just line drawing so reverb is lost)
     - [ ] Implement sibilant detection / super-resolution if necessary
     - [ ] Build this into the global spectral envelope matching part of the pipeline.
 
-    - [ ] While we're improving spectral envelope matching, we should probably be using a maximum filter when blurring instead of a gaussian, to represent "this is the loudest that x frequency range should be" rather than "this is the average loudness x frequency range should have", and filling in missing information with the super-resolved version.
+- [ ] Test using DeepSpeech3 featurizer for matching (i.e. using basic clone-stamp method)
 
 - [ ] Test out neural-network image-to-image approaches (e.g. the fast photo style transfer thing) so that we have some baseline of what results modern end-to-end systems yield
 
