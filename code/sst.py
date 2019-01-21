@@ -53,7 +53,6 @@ def fundamental_to_harmonics(fundamental, amplitude):
     fundamental_amps = denominators[:] / np.max(denominators)
     fundamental_weighted = coefficients[:,np.newaxis] * fundamental_cropped
     console.stats(fundamental_weighted)
-    #ipdb.set_trace()
     # and compute it for every timestep
     for t in range(fundamental.shape[1]):
         if denominators[t] == 0:
@@ -64,22 +63,41 @@ def fundamental_to_harmonics(fundamental, amplitude):
         if t + 1 != fundamental.shape[1]:
             fundamental_weighted[int(fundamental_t), t+1] += 0.05
             denominators[t+1] += 0.05
+        for h in range(2, 20):
+            # we want to extract information from the hth harmonic
+            f_h_min = int((h - 0.5) * fundamental_t)
+            f_h_max = int((h + 0.5) * fundamental_t)
+            h_slice = amplitude[f_h_min:f_h_max, t]
+            if h_slice.size == 0:
+                break
+            if h_slice.max() > 0.5 * fundamental_amps[t]:
+                # this harmonic is actually present and reasonably loud
+                # so let's use its pitch information instead
+                coefficients = np.array(range(f_h_min, f_h_max))
+                fundamental_h_weighted = coefficients[:,np.newaxis] * h_slice
+                denominator_h = np.sum(h_slice)
+                fundamental_h_t = fundamental_h_weighted.sum() / denominator_h * 1/h
+                if 0.8 * fundamental_t < fundamental_h_t < 1.2 * fundamental_t:
+                    # it's recursive; the estimates get better
+                    # as you increase in pitch
+                    # and we weight higher frequencies more
+                    alpha = 0.5
+                    fundamental_t = alpha * fundamental_h_t * (1-alpha) * fundamental_t
         fundamental_freqs[t] = fundamental_t
-        # TODO: actually supersampling
-        #harmonics[int(fundamental_t), t,:] = fundamental_amps[t]
-        s = max(0,t-1)
-        # cv2.line(harmonics, (s, fundamental_freqs[s]), (t, fundamental_freqs[t]), (0,int(255 * fundamental_amps[t]),0), 2)
-        # every python line drawing library is garbage that only
-        # works at integer coordinates
+        # every python line drawing library I found 
+        # only works at integer coordinates
         # so here we are
+        s = max(0,t-1)
         if fundamental_amps[s] > 0 and fundamental_amps[t] > 0:
             for i in range(1, 20):
-                draw_harmonic_slice(harmonics, t, fundamental_freqs[s]*i, fundamental_freqs[t]*i, fundamental_amps[s], fundamental_amps[t])
+                #draw_harmonic_slice(harmonics, t, fundamental_freqs[s]*i, fundamental_freqs[t]*i, fundamental_amps[s], fundamental_amps[t])
+                draw_harmonic_slice(harmonics, t, fundamental_freqs[s]*i, fundamental_freqs[t]*i, 1,1)
     return harmonics
 
 def extract_fundamental(amplitude):
     fundamental = np.zeros(amplitude.shape)
     # TODO: replace all of this with real code or at least clean it up
+    # it should just be one big 
     for t in range(amplitude.shape[1]):
         for f in range(4, 40):
             s = amplitude[f-2:f+3,t,0]
