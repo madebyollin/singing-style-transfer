@@ -8,12 +8,18 @@
 
     - [x] Implement fundamental frequency detection (rule-based or learned)
     - [x] Implement harmonic super-resolution (duplicating the fundamental curve up to higher octaves... this may be doable with some fancy fourier transform magic - using a saw wave instead of a sin wave somehow - but we can also just do it graphically).
-    - [ ] Add multiple-harmonic sampling to fundamental detection so it's more accurate (right now it's sorta glitchy)
+    - [x] Add multiple-harmonic sampling to fundamental detection so it's more accurate (right now it's sorta glitchy)
     - [ ] Add fundamental cloning to super-res (right now it's just line drawing so reverb is lost)
-    - [ ] Implement sibilant detection / super-resolution if necessary
     - [ ] Build this into the global spectral envelope matching part of the pipeline.
+    - [ ] Implement sibilant detection / super-resolution if necessary
 
 - [ ] Test using DeepSpeech3 featurizer for matching (i.e. using basic clone-stamp method)
+    
+    - [x] Install DS3 code and run it on sample acapella (tested; actual text output is not correct but features should still work)
+    - [ ] Recover features from early-layer activations
+    - [ ] Test feature-based clone-stamping
+    - [ ] Test feature-based clone-stamping with pitch warping
+    - [ ] Test feature-based clone-stamping with pitch warping and formant correction
 
 - [ ] Test out neural-network image-to-image approaches (e.g. the fast photo style transfer thing) so that we have some baseline of what results modern end-to-end systems yield
 
