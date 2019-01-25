@@ -139,8 +139,8 @@ Implement components that:
         - [ ] **[2h]** Add fundamental cloning to super-res (right now it's just line drawing so reverb is lost)
         - [ ] **[2h]** Build this into the global spectral envelope matching part of the pipeline.
         - [ ] **[6h]** Implement sibilant detection / super-resolution if necessary
-    - [ ] **[2h, ollin]** Implement or figure out how to use a pitch warping + formant correction thingy so that we can pitch warp when patch matching without messing up the audio
-        - [ ] We can test this by using the pitch normalization experiment (already works) and making sure that our formant correction on top of this generates plausible output.
+    - [x] **[2h, ollin]** Implement or figure out how to use a pitch warping + formant correction thingy so that we can pitch warp when patch matching without messing up the audio
+        - [x] We can test this by using the pitch normalization experiment (already works) and making sure that our formant correction on top of this generates plausible output.
     - [ ] **[lia4 / josephz]** Test using DeepSpeech featurizer for matching (i.e. using basic clone-stamp method)
         - [x] Install DS code and run it on sample acapella (tested; actual text output is not correct but features should still work)
         - [ ] **[4h]** Recover features from early-layer activations (so, we have a component that goes raw audio -> big vector thing that is hopefully semantically meaningful)
