@@ -35,32 +35,31 @@ def draw_harmonic_slice(spectrogram, t, f0, f1, alpha0, alpha1):
         spectrogram[p,max(0,t-1)] = (1 - aa_alpha) * blended_alpha
         spectrogram[p,t] = aa_alpha * blended_alpha
 
-def fundamental_to_harmonics(fundamental, amplitude):
-    harmonics = np.zeros(fundamental.shape)
+def extract_fundamental_freqs_amps(fundamental_mask, amplitude):
     # step one is to get a suitably accurate estimate of the fundamental pitch 
     # the *good* way to do this is lots of subpixel sampling at each audible harmonic to extract the maximum amount of information
     # but that's a lot of work
     # so I'm doing it the lazy way for now
     # we want these two things for line drawing
-    fundamental_freqs = np.zeros(fundamental.shape[1]) # one per timestep
-    fundamental_amps  = np.zeros(fundamental.shape[1]) # one per timestep
+    fundamental_freqs = np.zeros(fundamental_mask.shape[1]) # one per timestep
+    fundamental_amps  = np.zeros(fundamental_mask.shape[1]) # one per timestep
 
     # so lets first assume the fundamental is the amplitude-weighted average
     MAX_FREQ = 40
     coefficients = np.array(range(MAX_FREQ))
-    fundamental_cropped = fundamental[:MAX_FREQ,:,0]
+    fundamental_cropped = fundamental_mask[:MAX_FREQ,:,0]
     denominators = np.sum(fundamental_cropped, axis=0)
     fundamental_amps = denominators[:] / np.max(denominators)
     fundamental_weighted = coefficients[:,np.newaxis] * fundamental_cropped
     console.stats(fundamental_weighted)
     # and compute it for every timestep
-    for t in range(fundamental.shape[1]):
+    for t in range(fundamental_mask.shape[1]):
         if denominators[t] == 0:
             fundamental_t = 0
         else:
             fundamental_t = np.sum(fundamental_weighted[:,t]) / denominators[t]
         # hack to make it continuous across gaps
-        if t + 1 != fundamental.shape[1]:
+        if t + 1 != fundamental_mask.shape[1]:
             fundamental_weighted[int(fundamental_t), t+1] += 0.05
             denominators[t+1] += 0.05
         for h in range(2, 20):
@@ -81,17 +80,21 @@ def fundamental_to_harmonics(fundamental, amplitude):
                     # it's recursive; the estimates get better
                     # as you increase in pitch
                     # and we weight higher frequencies more
-                    alpha = 0.5
-                    fundamental_t = alpha * fundamental_h_t * (1-alpha) * fundamental_t
+                    fundamental_t = fundamental_h_t
         fundamental_freqs[t] = fundamental_t
+    return fundamental_freqs, fundamental_amps
+
+def fundamental_to_harmonics(fundamental_freqs, fundamental_amps, amplitude):
+    harmonics = np.zeros(amplitude.shape)
+    for t in range(len(fundamental_freqs)):
         # every python line drawing library I found 
         # only works at integer coordinates
         # so here we are
         s = max(0,t-1)
         if fundamental_amps[s] > 0 and fundamental_amps[t] > 0:
-            for i in range(1, 20):
-                #draw_harmonic_slice(harmonics, t, fundamental_freqs[s]*i, fundamental_freqs[t]*i, fundamental_amps[s], fundamental_amps[t])
-                draw_harmonic_slice(harmonics, t, fundamental_freqs[s]*i, fundamental_freqs[t]*i, 1,1)
+            for i in range(1, 40):
+                draw_harmonic_slice(harmonics, t, fundamental_freqs[s]*i, fundamental_freqs[t]*i, fundamental_amps[s], fundamental_amps[t])
+                #draw_harmonic_slice(harmonics, t, fundamental_freqs[s]*i, fundamental_freqs[t]*i, 1,1)
     return harmonics
 
 def extract_fundamental(amplitude):
@@ -111,6 +114,12 @@ def extract_fundamental(amplitude):
     fundamental *= mask
     return fundamental
 
+def spectral_envelope(amplitude):
+    axis = (1,2)
+    if amplitude.ndim == 2: # single column
+        axis = (1,)
+    return scipy.ndimage.filters.gaussian_filter1d(np.mean(amplitude, axis=axis), 10)
+
 def global_eq_match_2(content, style):
     content_mean_freq = np.mean(content, axis=(1, 2))
     style_mean_freq = np.mean(style, axis=(1, 2))
@@ -128,25 +137,39 @@ def global_eq_match_2(content, style):
     assert stylized.shape == content.shape
     return stylized / stylized.max()
 
-def global_eq_match(content, style):
+def global_eq_match(content, style, harmonics):
     """
     :param content:
     :param style:
     """
-    content_mean_freq = np.mean(content, axis=(1, 2))
-    style_mean_freq = np.mean(style, axis=(1, 2))
+    content = np.maximum(content, harmonics/harmonics.max() * content.max()) # lol
+    gf = lambda x: scipy.ndimage.filters.gaussian_filter1d(x, 10)
+    content_mean_freq   = gf(np.mean(content, axis=(1, 2)))
+    style_mean_freq     = gf(np.mean(style, axis=(1, 2)))
+    harmonics_mean_freq = gf(np.mean(harmonics, axis=(1, 2)))
 
     weights = style_mean_freq / content_mean_freq
     weights = np.clip(weights, 0, 2)
-    weights = scipy.ndimage.filters.gaussian_filter1d(weights, 10)
-
     stylized = (content.T * weights).T
+
+    # TODO: figure out how to actually do this correctly :P
+    #additive_weights = np.clip(style_mean_freq - content_mean_freq,0,10)
+    #console.stats(stylized, "stylized before additive weights")
+    #added_weights = (harmonics.T * additive_weights / harmonics.max()).T
+    #stylized = np.maximum(stylized, 2 * added_weights * style.max())
+    #console.stats(stylized, "stylized after additive weights")
+    #console.stats(added_weights, "added_weights")
     assert stylized.shape == content.shape
     return stylized
 
 def stylize(content, style):
     stylized = content
-    stylized = global_eq_match(content, style)
+    # Pitch fundamental extraction (currently unused)
+    fundamental_mask = extract_fundamental(content)
+    fundamental_freqs, fundamental_amps = extract_fundamental_freqs_amps(fundamental_mask, content)
+    harmonics = fundamental_to_harmonics(fundamental_freqs, fundamental_amps, content)
+
+    stylized = global_eq_match(content, style, harmonics)
     #stylized = global_eq_match_2(content, style)
     return stylized
 
@@ -169,9 +192,6 @@ def main():
         # Read content audio to spectrograms.
         content_audio, content_sample_rate = conversion.file_to_audio(content_path)
         content_img, content_phase = conversion.audio_to_spectrogram(content_audio, fft_window_size=1536)
-
-        # Pitch fundamental extraction (currently unused)
-        fundamental_mask = extract_fundamental(content_img)
 
         stylized_img = stylize(content_img, style_img)
         stylized_audio = conversion.amplitude_to_audio(stylized_img, fft_window_size=1536, phase_iterations=1, phase=content_phase)
