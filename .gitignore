@@ -1,5 +1,20 @@
-*/__pycache__
+# gitignore
+
+# Python
+**/__pycache__
+
+## venv
+lib/
+lib64
+pip-selfcheck.json
+pyvenv.cfg
+share/
+
+# Vim/Idea
 *.swp
+*.idea
+
+# Audio/Spectrograms
 *.wav
 code/sample/stylized.*
 code/reference_stylized.png
@@ -10,3 +25,8 @@ stylized.*
 **/stylized.*
 */stylized.*
 fundamental.*
+
+# Big stuff
+models/
+data/
+
