@@ -26,6 +26,6 @@ External repositories bootstrapped for our use
 2. Run `DeepSpeech/DeepSpeech.py` 
 
   ```bash
-  python3 DeepSpeech/DeepSpeech.py 
+  python3 DeepSpeech/DeepSpeech.py --one_shot_infer=<wav file>
   ```
 
