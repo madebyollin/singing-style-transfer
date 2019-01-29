@@ -3,6 +3,7 @@ import scipy
 import numpy as np
 from scipy.ndimage.morphology import grey_dilation, grey_erosion
 from skimage.feature import match_template
+from scipy.signal import convolve2d
 from skimage import measure
 import conversion
 import console
@@ -168,26 +169,40 @@ def extract_fundamental(amplitude):
     fundamental = np.zeros(amplitude.shape)
     # TODO: replace all of this with real code or at least clean it up
     # it should just be one big numpy thingy
+    f_band_min = -4
+    f_band_max = 8
+    f_band_len = f_band_max - f_band_min
+    f_band_coeffs = (
+        1
+        - np.concatenate(
+            (np.array(range(f_band_min, 0)) / f_band_min, np.array(range(f_band_max)) / f_band_max)
+        )
+    )[:, np.newaxis]
+    peak_finder = np.array([-0.5, -0.5, 2, -.5, -.5])[:, np.newaxis].T
+    # convolved = convolve2d(np.mean(amplitude, axis=2), peak_finder, mode="same")
+    console.time("big loop")
+    freqs = np.argmax(np.mean(amplitude[:50], axis=2), axis=0)
+    console.stats(freqs)
     for t in range(amplitude.shape[1]):
-        for f in range(4, 40):
-            s = amplitude[f - 2 : f + 3, t, 0]
-            if (
-                np.dot(np.array([-0.5, -0.5, 2, -.5, -.5]), s) > 0
-                and amplitude[f][t][0]
-                + amplitude[f][max(t - 1, 0)][0]
-                + fundamental[f][max(t - 1, 0)][0]
-                > 0.5 * amplitude.max()
-            ):
-                for i in range(f - 4, f + 9):
-                    fundamental[i][t] = amplitude[i][t] * (1 - abs(f - i) / 13)
-                break
-    # remove dots
+        f = freqs[t]
+        # handle case where 2nd harmonic > first
+        if np.mean(amplitude[f // 2, t]) > 0.4 * np.mean(amplitude[f, t]):
+            f = f // 2
+            freqs[t] = f
+        if f > 5:
+            f_min = f + f_band_min
+            f_max = f + f_band_max
+            fundamental[f_min:f_max, t] = f_band_coeffs * amplitude[f_min:f_max, t]
+
+    console.timeEnd("big loop")
+    console.time("remove dots")
     mask = (
         grey_dilation(
-            grey_erosion(fundamental, structure=np.ones((5, 5, 1))), structure=np.ones((6, 12, 1))
+            grey_erosion(fundamental, structure=np.ones((3, 5, 1))), structure=np.ones((6, 12, 1))
         )
         > 0.1
     )
+    console.timeEnd("remove dots")
     # conversion.image_to_file(mask, "mask_" + str(amplitude.shape) + ".png")
     fundamental *= mask
     return fundamental
