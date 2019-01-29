@@ -261,13 +261,83 @@ def global_eq_match(content, style, harmonics):
 
 def compute_features(amplitude):
     # TODO: low-dimensional vector for each one
-    features = measure.block_reduce(np.mean(amplitude, 2), (16, 1), np.max)
-    # features /= np.clip(np.mean(features, axis=1)[:, np.newaxis], 0.25, 4)
+    features = measure.block_reduce(np.mean(amplitude, 2), (4, 1), np.max)
+    # remove global frequency dist
+    features /= np.clip(np.mean(features, axis=1)[:, np.newaxis], 0.25, 4)
     features = np.clip(features, 0, 10)
-    return features
+    # weight higher frequencies less
+    weights = 1 - np.linspace(0, 1, num=features.shape[0])
+    weights[:5] = 0  # lol
+    return weights[:, np.newaxis] * features
 
 
 def audio_patch_match(content, style, content_freqs, style_freqs, content_features, style_features):
+    # setup
+    output = np.zeros(content.shape)
+    num_freqs, num_timesteps, num_channels = content.shape
+    _, num_timesteps_style, _ = style.shape
+    # initialization of nnf
+    nnf = (np.random.uniform(low=-1, high=1, size=num_timesteps) * num_timesteps_style).astype(
+        np.int32
+    )
+
+    # distance function
+    def distance(content_t, style_t):
+        style_t %= num_timesteps_style
+        c = content_features[:, content_t]
+        s = style_features[:, style_t]
+        return np.sum(np.abs(c - s)) / len(c)
+
+    w = 1024
+    # TODO: iterative supersampling of priors so we don't have to do all this work each iteration
+    iterations = 8
+    amps = np.max(content, axis=(0, 2))
+    for _ in range(iterations):
+        # iteratively improve the correspondence_field
+        for t in range(num_timesteps):
+            amp = amps[t]
+            # propagation
+            # TODO: numpyify all this
+            possible_offsets = nnf[t - 1 : t + 1].tolist()
+            # random search around the current offset
+            radius = w
+            # TODO: especially this part dear lord
+            while radius > 1:
+                r_i = np.random.uniform(-1, 1)
+                u_i = nnf[t] + int(r_i * radius)
+                possible_offsets.append(u_i)
+                radius = radius // 2  # alpha decreases
+            # compute the best of all the options
+            best_offset = None
+            best_offset_dist = None
+            for off in possible_offsets:
+                s = t + off
+                consistency_penalty = amp * 200 * abs(nnf[t - 1] - off) / num_timesteps_style
+                # consistency_penalty = 0
+                offset_dist = distance(t, s) + consistency_penalty
+                if best_offset is None or offset_dist < best_offset_dist:
+                    best_offset = off
+                    best_offset_dist = offset_dist
+            nnf[t] = best_offset % num_timesteps_style
+    # now, we just assign the thingy wingies
+    for t in range(num_timesteps):
+        s = (t + nnf[t]) % num_timesteps_style
+        freq_stretch = content_freqs[t] / style_freqs[s]
+        if not (0.5 < freq_stretch < 5):
+            freq_stretch = 1
+        output[:, t] = formant_preserving_scale_one_column(style[:, s], freq_stretch)
+        # TODO: why is this even necessary
+        output_max = output[:, t].max()
+        content_max = content[:, t].max()
+        if output_max > content_max:
+            scaling_factor = 0 if content_max < 0.1 else content_max / output_max
+            output[:, t] *= scaling_factor
+    return output
+
+
+def audio_patch_match_bad(
+    content, style, content_freqs, style_freqs, content_features, style_features
+):
     patch_size = 8
     output = np.zeros(content.shape)
     num_identity_stretches = 0
@@ -321,6 +391,7 @@ def stylize(content, style):
     style_features = compute_features(style_normalized)
 
     # Patchmatch
+    console.time("patch match")
     stylized = audio_patch_match(
         content,
         style,
@@ -329,6 +400,7 @@ def stylize(content, style):
         content_features,
         style_features,
     )
+    console.timeEnd("patch match")
     # stylized = global_eq_match(content, style, harmonics)
     # stylized = global_eq_match_2(content, style)
     return stylized
