@@ -21,6 +21,8 @@
     - [ ] Test feature-based clone-stamping with pitch warping
     - [ ] Test feature-based clone-stamping with pitch warping and formant correction
 
+- [x] Test out PatchMatch
+
 - [ ] Test out neural-network image-to-image approaches (e.g. the fast photo style transfer thing) so that we have some baseline of what results modern end-to-end systems yield
 
     - [ ] https://github.com/NVIDIA/FastPhotoStyle
