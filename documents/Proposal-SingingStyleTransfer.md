@@ -136,20 +136,22 @@ Implement components that:
         - [x] Implement fundamental frequency detection (rule-based or learned)
         - [x] Implement harmonic super-resolution (duplicating the fundamental curve up to higher octaves... this may be doable with some fancy fourier transform magic - using a saw wave instead of a sin wave somehow - but we can also just do it graphically).
         - [x] Add multiple-harmonic sampling to fundamental detection so it's more accurate (right now it's sorta glitchy)
-        - [ ] **[2h]** Add fundamental cloning to super-res (right now it's just line drawing so reverb is lost)
-        - [ ] **[2h]** Build this into the global spectral envelope matching part of the pipeline.
-        - [ ] **[6h]** Implement sibilant detection / super-resolution if necessary
+        - [ ] ~~**[2h]** Add fundamental cloning to super-res (right now it's just line drawing so reverb is lost)~~ Not needed for patchmatch-based approach
+        - [ ] ~~**[2h]** Build this into the global spectral envelope matching part of the pipeline.~~ Not needed for patchmatch-based approach
+        - [ ] ~~**[6h]** Implement sibilant detection / super-resolution if necessary~~ Not needed for patchmatch-based approach
+    - [x] **[ollin]** Implement a 1d pitch- warping patchmatch using naive features (can switch to neural features later)
+        - [x] The output is interesting but not great. Using better features will help, but we may still also need to synthesize missing sounds somehow...
     - [x] **[2h, ollin]** Implement or figure out how to use a pitch warping + formant correction thingy so that we can pitch warp when patch matching without messing up the audio
         - [x] We can test this by using the pitch normalization experiment (already works) and making sure that our formant correction on top of this generates plausible output.
     - [ ] **[lia4 / josephz]** Test using DeepSpeech featurizer for matching (i.e. using basic clone-stamp method)
         - [x] Install DS code and run it on sample acapella (tested; actual text output is not correct but features should still work)
-        - [ ] **[4h]** Recover features from early-layer activations (so, we have a component that goes raw audio -> big vector thing that is hopefully semantically meaningful)
+        - [x] **[4h]** Recover features from early-layer activations (so, we have a component that goes raw audio -> big vector thing that is hopefully semantically meaningful)
         - [ ] **[2h]** Test feature-based clone-stamping
         - [ ] **[2h]** Test feature-based clone-stamping with pitch warping
         - [ ] **[6h]** Test feature-based clone-stamping with pitch warping and formant correction
     - [ ] Test out neural-network image-to-image approaches (e.g. the fast photo style transfer thing) so that we have some baseline of what results modern end-to-end systems yield
         - [x] ~~https://github.com/NVIDIA/FastPhotoStyle~~ this probably won't work
-        - [ ] https://github.com/msracver/Deep-Image-Analogy
+        - [x] ~~https://github.com/msracver/Deep-Image-Analogy~~ we're using this as a reference!
         - [ ] Try https://github.com/pkmital/time-domain-neural-audio-style-transfer
 - **Week 5-7:**
     - Test alternate featurizers if performance of DS is not good
