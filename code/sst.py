@@ -2,7 +2,8 @@
 import scipy
 import numpy as np
 from scipy.ndimage.morphology import grey_dilation, grey_erosion
-
+from skimage.feature import match_template
+from skimage import measure
 import conversion
 import console
 import cv2
@@ -120,33 +121,46 @@ def fundamental_to_harmonics(fundamental_freqs, fundamental_amps, amplitude):
     return harmonics
 
 
+def scale_one_column(column, scaling_factor):
+    output = np.zeros(column.shape)
+    orig_height = len(column)
+    scaled_height = int(orig_height * scaling_factor)
+    slice_height = min(orig_height, scaled_height)
+    for dst_f in range(slice_height):
+        # n^2 nearest neighbor scaling since ndimage scaling was even slower
+        src_f = int(dst_f / scaling_factor)
+        output[dst_f] = column[src_f]
+    return output
+
+
+def formant_preserving_scale_one_column(amp_column, scaling_factor):
+    amp_column_scaled = scale_one_column(amp_column, scaling_factor)
+    weights = np.clip(
+        spectral_envelope(amp_column) / (spectral_envelope(amp_column_scaled) + 0.01), 0, 10
+    )
+    return (amp_column_scaled.T * weights).T
+
+
 def normalize_pitch(amplitude, phase, fundamental_freqs, fundamental_amps, base_pitch=None):
     pitch_normalized_amp = np.zeros(amplitude.shape)
-    pitch_normalized_phase = np.zeros(phase.shape)
+    if phase is None:
+        pitch_normalized_phase = None
+    else:
+        pitch_normalized_phase = np.zeros(phase.shape)
     if base_pitch is None:
         base_pitch = np.mean(fundamental_freqs)
     for t in range(len(fundamental_freqs)):
         # TODO: factor this into a separate method
         amp_column = amplitude[:, t]
-        phase_column = phase[:, t]
-        if fundamental_freqs[t] != 0 and fundamental_amps[t] != 0:
+        if phase is not None:
+            phase_column = phase[:, t]
+        if fundamental_freqs[t] > 5 and fundamental_amps[t] != 0:
             scaling_factor = base_pitch / fundamental_freqs[t]
         else:
             scaling_factor = 1
-        orig_height = len(amp_column)
-        scaled_height = int(orig_height * scaling_factor)
-        slice_height = min(orig_height, scaled_height)
-        for dst_f in range(slice_height):
-            # n^2 nearest neighbor scaling since ndimage scaling was even slower
-            src_f = int(dst_f / scaling_factor)
-            pitch_normalized_amp[dst_f, t, :] = amplitude[src_f, t, :]
-            pitch_normalized_phase[dst_f, t, :] = phase[src_f, t, :]
-
-        amp_column_scaled = pitch_normalized_amp[:, t]
-        weights = np.clip(
-            spectral_envelope(amp_column) / (spectral_envelope(amp_column_scaled) + 0.01), 0, 10
-        )
-        pitch_normalized_amp[:, t] = (amp_column_scaled.T * weights).T
+        if phase is not None:
+            pitch_normalized_phase[:, t] = scale_one_column(phase_column, scaling_factor)
+        pitch_normalized_amp[:, t] = formant_preserving_scale_one_column(amp_column, scaling_factor)
     return pitch_normalized_amp, pitch_normalized_phase
 
 
@@ -174,7 +188,7 @@ def extract_fundamental(amplitude):
         )
         > 0.1
     )
-    conversion.image_to_file(mask, "mask_" + str(amplitude.shape) + ".png")
+    # conversion.image_to_file(mask, "mask_" + str(amplitude.shape) + ".png")
     fundamental *= mask
     return fundamental
 
@@ -230,21 +244,84 @@ def global_eq_match(content, style, harmonics):
     return stylized
 
 
+def compute_features(amplitude):
+    # TODO: low-dimensional vector for each one
+    features = measure.block_reduce(np.mean(amplitude, 2), (16, 1), np.max)
+    # features /= np.clip(np.mean(features, axis=1)[:, np.newaxis], 0.25, 4)
+    features = np.clip(features, 0, 10)
+    return features
+
+
+def audio_patch_match(content, style, content_freqs, style_freqs, content_features, style_features):
+    patch_size = 8
+    output = np.zeros(content.shape)
+    num_identity_stretches = 0
+    for t in range(content_features.shape[1] // patch_size):
+        slice_start = t * patch_size
+        slice_end = slice_start + patch_size
+        content_patch = content_features[:, slice_start:slice_end]
+        matching_scores = match_template(style_features, content_patch)
+        best_patch_t = np.argmax(matching_scores)
+        # ipdb.set_trace()
+        best_patch = style[:, best_patch_t : best_patch_t + patch_size]
+        # output[:, slice_start:slice_end] = best_patch
+        for p in range(patch_size):
+            freq_stretch = content_freqs[slice_start + p] / style_freqs[best_patch_t + p]
+            # freq_stretch = 32 / style_freqs[best_patch_t + p]
+            if not (0.5 < freq_stretch < 10):
+                freq_stretch = 1
+                num_identity_stretches += 1
+            best_patch_scaled = formant_preserving_scale_one_column(best_patch[:, p], freq_stretch)
+            output[:, slice_start + p] = best_patch_scaled
+    return output
+
+
 def stylize(content, style):
     stylized = content
-    # Pitch fundamental extraction (currently unused)
-    fundamental_mask = extract_fundamental(content)
-    fundamental_freqs, fundamental_amps = extract_fundamental_freqs_amps(fundamental_mask, content)
-    harmonics = fundamental_to_harmonics(fundamental_freqs, fundamental_amps, content)
+    # Pitch fundamental extraction
+    console.time("extracting fundamentals")
+    content_fundamental_mask = extract_fundamental(content)
+    style_fundamental_mask = extract_fundamental(style)
+    console.timeEnd("extracting fundamentals")
+    console.time("fundamental freqs and amps")
+    content_fundamental_freqs, content_fundamental_amps = extract_fundamental_freqs_amps(
+        content_fundamental_mask, content
+    )
+    style_fundamental_freqs, style_fundamental_amps = extract_fundamental_freqs_amps(
+        style_fundamental_mask, style
+    )
+    console.timeEnd("fundamental freqs and amps")
+    # Pitch normalization
+    console.time("pitch normalization")
+    content_normalized, _ = normalize_pitch(
+        content, None, content_fundamental_freqs, content_fundamental_amps
+    )
+    style_normalized, _ = normalize_pitch(
+        style, None, style_fundamental_freqs, style_fundamental_amps
+    )
+    console.timeEnd("pitch normalization")
 
-    stylized = global_eq_match(content, style, harmonics)
+    # Featurization
+    content_features = compute_features(content_normalized)
+    style_features = compute_features(style_normalized)
+
+    # Patchmatch
+    stylized = audio_patch_match(
+        content,
+        style,
+        content_fundamental_freqs,
+        style_fundamental_freqs,
+        content_features,
+        style_features,
+    )
+    # stylized = global_eq_match(content, style, harmonics)
     # stylized = global_eq_match_2(content, style)
     return stylized
 
 
 def main():
     sample_dir = "sample"
-    sample_names = ["one_more_time", "rolling_in_the_deep"]
+    sample_names = ["rolling_in_the_deep"]
     for sample_name in sample_names:
         console.h1("Processing %s" % sample_name)
         sample_path = sample_dir + "/" + sample_name
