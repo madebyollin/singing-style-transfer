@@ -16,6 +16,8 @@ share/
 
 # Audio/Spectrograms
 *.wav
+*.mp3*.mp3
+*.png
 code/sample/stylized.*
 code/reference_stylized.png
 *.harmonics.*
@@ -29,4 +31,3 @@ fundamental.*
 # Big stuff
 models/
 data/
-
