@@ -13,6 +13,9 @@ External repositories bootstrapped for our use
   ```bash
   wget https://github.com/mozilla/DeepSpeech/releases/download/v0.4.1/deepspeech-0.4.1-models.tar.gz
   tar xvfz deepspeech-0.4.1-models.tar.gz
+
+  wget https://github.com/mozilla/DeepSpeech/releases/download/v0.4.1/deepspeech-0.4.1-checkpoint.tar.gz
+  tar xvfz deepspeech-0.4.1-checkpoint.tar.gz
   ```
 1. Install requirements (tested for Python3, Ubuntu 16.04)
   - This primarily uses `tensorflow-gpu=1.12` and an obscure `ds_ctcdecoder`
@@ -26,6 +29,12 @@ External repositories bootstrapped for our use
 2. Run `DeepSpeech/DeepSpeech.py` 
 
   ```bash
-  python3 DeepSpeech/DeepSpeech.py --one_shot_infer=<wav file>
+  python3 ./DeepSpeech/DeepSpeech-inference-hack.py --one_shot_infer=<wav file>
+  ```
+  Note: There are hard-coded directory names that need changing.
+
+3. Visualize outputs
+  ```bash
+  ./scripts/visualize_layers.py
   ```
 
