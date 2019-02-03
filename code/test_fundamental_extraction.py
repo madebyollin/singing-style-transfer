@@ -5,13 +5,8 @@ import numpy as np
 import sst
 import ipdb
 
-<<<<<<< HEAD
 test_files = ["../data/aligned/one_last_time/one_last_time_cover_aligned_30s.mp3", "../data/aligned/one_last_time/one_last_time_original_30s.mp3"]
-# test_files = ["/Users/ollin/Desktop/ity.mp3"]
-=======
 #test_files = ["sample/rolling_in_the_deep/style.mp3"]
-test_files = ["/Users/ollin/Desktop/test.mp3"]
->>>>>>> fcac82dc4fdc4518f7dcacefca7dad6c1922790b
 
 for f in test_files:
     console.time("preprocessing")
