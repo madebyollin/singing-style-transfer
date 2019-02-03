@@ -5,8 +5,8 @@ import numpy as np
 import sst
 import ipdb
 
-test_files = ["sample/rolling_in_the_deep/style.mp3"]
-# test_files = ["/Users/ollin/Desktop/ity.mp3"]
+#test_files = ["sample/rolling_in_the_deep/style.mp3"]
+test_files = ["/Users/ollin/Desktop/test.mp3"]
 
 for f in test_files:
     console.time("preprocessing")
