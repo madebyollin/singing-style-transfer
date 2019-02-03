@@ -889,8 +889,9 @@ def do_single_file_inference(input_file_path):
             inputs['input_lengths']: [num_strides],
         })
 
-        output_path = '/home/josephz/GoogleDrive/University/UW/2018-19/CSE481I/singing-style' \
-                      '-transfer/src/extern/DeepSpeech/scripts/cover'
+        # output_path = '/home/josephz/GoogleDrive/University/UW/2018-19/CSE481I/singing-style' \
+                      # '-transfer/src/extern/DeepSpeech/scripts/cover'
+        output_path = FLAGS.np_output_path
         if not os.path.isdir(output_path):
             os.mkdir(output_path)
         assert os.path.isdir(output_path)

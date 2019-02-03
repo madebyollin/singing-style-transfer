@@ -7,13 +7,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 if '__main__' == __name__:
-    inp_path = '/home/josephz/GoogleDrive/University/UW/2018-19/CSE481I/singing-style-transfer/src/extern/DeepSpeech/scripts'
+    inp_path = './'
 
-    targets = ['cover', 'original']
+    targets = ['cover', 'original', 'cover_pitch_normalized', 'original_pitch_normalized']
     for target in targets:
         layers = glob.glob(os.path.join(inp_path, target, '*.npy'))
         for l in layers:
-            arr = np.load(l)
+            arr = np.load(l).T
             assert len(arr.shape) == 2
 
             plt.imshow(arr)

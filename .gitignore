@@ -31,3 +31,4 @@ fundamental.*
 # Big stuff
 models/
 data/
+*.jpg

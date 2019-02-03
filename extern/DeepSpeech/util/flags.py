@@ -137,4 +137,5 @@ def create_flags():
     # Inference mode
 
     tf.app.flags.DEFINE_string  ('one_shot_infer',       '',       'one-shot inference mode: specify a wav file and the script will load the checkpoint and perform inference on it. Disables training, testing and exporting.')
+    tf.app.flags.DEFINE_string  ('np_output_path',       '',       'disgusting hack for our scripts, do not use')
 
