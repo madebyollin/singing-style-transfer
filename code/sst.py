@@ -9,6 +9,8 @@ import conversion
 import console
 import cv2
 import ipdb
+from skimage.transform import resize
+from ds_feature_extractor import get_feature_array
 
 
 def draw_harmonic_slice(spectrogram, t, f0, f1, alpha0, alpha1):
@@ -272,6 +274,10 @@ def compute_features(amplitude):
 
 
 def audio_patch_match(content, style, content_freqs, style_freqs, content_features, style_features):
+    console.log("content.shape:", content.shape)
+    console.log("content_features.shape:", content_features.shape)
+    console.log("style.shape:", style.shape)
+    console.log("style_features.shape:", style_features.shape)
     # setup
     output = np.zeros(content.shape)
     num_freqs, num_timesteps, num_channels = content.shape
@@ -312,8 +318,8 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
             best_offset_dist = None
             for off in possible_offsets:
                 s = t + off
-                consistency_penalty = amp * 200 * abs(nnf[t - 1] - off) / num_timesteps_style
-                # consistency_penalty = 0
+                # consistency_penalty = amp * 200 * abs(nnf[t - 1] - off) / num_timesteps_style
+                consistency_penalty = 0
                 offset_dist = distance(t, s) + consistency_penalty
                 if best_offset is None or offset_dist < best_offset_dist:
                     best_offset = off
@@ -361,7 +367,7 @@ def audio_patch_match_bad(
     return output
 
 
-def stylize(content, style):
+def stylize(content, style, content_path, style_path):
     stylized = content
     # Pitch fundamental extraction
     console.time("extracting fundamentals")
@@ -387,8 +393,12 @@ def stylize(content, style):
     console.timeEnd("pitch normalization")
 
     # Featurization
-    content_features = compute_features(content_normalized)
-    style_features = compute_features(style_normalized)
+    '''content_features = compute_features(content_normalized)
+    style_features = compute_features(style_normalized)''' 
+    content_features = get_feature_array(content_path)
+    content_features = resize(content_features, (2048, content.shape[1]))
+    style_features = get_feature_array(style_path)
+    style_features = resize(style_features, (2048, style.shape[1]))
 
     # Patchmatch
     console.time("patch match")
@@ -428,7 +438,7 @@ def main():
             content_audio, fft_window_size=1536
         )
 
-        stylized_img = stylize(content_img, style_img)
+        stylized_img = stylize(content_img, style_img, content_path, style_path)
         stylized_audio = conversion.amplitude_to_audio(
             stylized_img, fft_window_size=1536, phase_iterations=1, phase=content_phase
         )
