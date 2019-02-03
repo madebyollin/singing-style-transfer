@@ -260,7 +260,7 @@ def global_eq_match(content, style, harmonics):
 
 
 def compute_features(amplitude):
-    # TODO: low-dimensional vector for each one
+    # TODO: replace this with DeepSpeech layer 5
     features = measure.block_reduce(np.mean(amplitude, 2), (4, 1), np.max)
     # remove global frequency dist
     features /= np.clip(np.mean(features, axis=1)[:, np.newaxis], 0.25, 4)
@@ -268,6 +268,7 @@ def compute_features(amplitude):
     # weight higher frequencies less
     weights = 1 - np.linspace(0, 1, num=features.shape[0])
     weights[:5] = 0  # lol
+    # the output is [num_features x time]
     return weights[:, np.newaxis] * features
 
 
@@ -276,7 +277,7 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
     output = np.zeros(content.shape)
     num_freqs, num_timesteps, num_channels = content.shape
     _, num_timesteps_style, _ = style.shape
-    # initialization of nnf
+    # initialization of nnf, size is num_timesteps
     nnf = (np.random.uniform(low=-1, high=1, size=num_timesteps) * num_timesteps_style).astype(
         np.int32
     )
@@ -288,7 +289,12 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
         s = style_features[:, style_t]
         return np.sum(np.abs(c - s)) / len(c)
 
-    w = 1024
+    w = 1024  # arbitrary constant
+    # THIS BLOCK IS THE PATCH MATCH ALGORITHM
+    # the only important result is the values in nnf, which tells you
+    # which part of the style to draw from, for each part of the content
+    # code following paper this one
+    # https://gfx.cs.princeton.edu/pubs/Barnes_2009_PAR/patchmatch.pdf
     # TODO: iterative supersampling of priors so we don't have to do all this work each iteration
     iterations = 8
     amps = np.max(content, axis=(0, 2))
@@ -312,6 +318,8 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
             best_offset_dist = None
             for off in possible_offsets:
                 s = t + off
+                # penalize changing style source-regions in the middle of a loud part of the content
+                # probably shouldn't be necessary
                 consistency_penalty = amp * 200 * abs(nnf[t - 1] - off) / num_timesteps_style
                 # consistency_penalty = 0
                 offset_dist = distance(t, s) + consistency_penalty
@@ -327,6 +335,7 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
             freq_stretch = 1
         output[:, t] = formant_preserving_scale_one_column(style[:, s], freq_stretch)
         # TODO: why is this even necessary
+        # basically, rescale amplitude by content amplitude, or mute it if content is quiet
         output_max = output[:, t].max()
         content_max = content[:, t].max()
         if output_max > content_max:
@@ -408,7 +417,7 @@ def stylize(content, style):
 
 def main():
     sample_dir = "sample"
-    sample_names = ["rolling_in_the_deep"]
+    sample_names = ["rolling_in_the_deep", "one_more_time"]
     for sample_name in sample_names:
         console.h1("Processing %s" % sample_name)
         sample_path = sample_dir + "/" + sample_name
