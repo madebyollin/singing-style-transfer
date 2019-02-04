@@ -259,20 +259,20 @@ def global_eq_match_2(content, style):
     return stylized / stylized.max()
 
 
-def global_eq_match(content, style, harmonics):
+def global_eq_match(content, style):
     """
     :param content:
     :param style:
     """
-    content = np.maximum(content, harmonics / harmonics.max() * content.max())  # lol
+    #content = np.maximum(content, harmonics / harmonics.max() * content.max())  # lol
     gf = lambda x: scipy.ndimage.filters.gaussian_filter1d(x, 10)
     content_mean_freq = gf(np.mean(content, axis=(1, 2)))
     style_mean_freq = gf(np.mean(style, axis=(1, 2)))
-    harmonics_mean_freq = gf(np.mean(harmonics, axis=(1, 2)))
 
     weights = style_mean_freq / content_mean_freq
     weights = np.clip(weights, 0, 2)
-    stylized = (content.T * weights).T
+    stylized = weights[:,np.newaxis,np.newaxis] * content
+    stylized *= content.max() / stylized.max()
 
     # TODO: figure out how to actually do this correctly :P
     # additive_weights = np.clip(style_mean_freq - content_mean_freq,0,10)
@@ -288,16 +288,16 @@ def global_eq_match(content, style, harmonics):
 def compute_features(amplitude):
     # TODO: replace this with DeepSpeech layer 5
     features = measure.block_reduce(np.mean(amplitude, 2), (4, 1), np.max)
+    features[:10] = 0
+    features[48:] = 0
     # remove global frequency dist
     features /= np.clip(np.mean(features, axis=1)[:, np.newaxis], 0.25, 4)
     features = np.clip(features, 0, 10)
+    features /= np.clip(features.max(axis=0),0.25, 10)
     # weight higher frequencies less
     #weights = 1 - np.linspace(0, 1, num=features.shape[0])
-    weights = np.ones(features.shape[0])
-    weights[:20] = 0  # lol
-    weights[200:] = 0  # lol
     # the output is [num_features x time]
-    return weights[:, np.newaxis] * features
+    return features
 
 
 def compute_nnf(content_features, style_features):
@@ -375,7 +375,7 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
             output[:, t] *= scaling_factor
     return output
 
-def audio_patch_rescale(content, style, content_freqs, style_freqs, content_features, style_features, content_harmonics):
+def audio_patch_rescale(content, style, content_freqs, style_freqs, content_features, style_features, content_harmonics, content_sibilants):
     # setup
     output = np.zeros(content.shape)
     num_freqs, num_timesteps, num_channels = content.shape
@@ -388,7 +388,7 @@ def audio_patch_rescale(content, style, content_freqs, style_freqs, content_feat
         if not (0.5 < freq_stretch < 5):
             freq_stretch = 1
 
-        content_slice = np.maximum(content[:, t], content_harmonics[:,t])
+        content_slice = np.maximum(content[:, t], np.maximum(content_harmonics[:,t], content_sibilants[:,t]))
         style_slice = style[:, s]
         #style_env = spectral_envelope(style_slice)
         shifted_style_env = spectral_envelope(formant_preserving_scale_one_column(style_slice, freq_stretch))
@@ -396,7 +396,7 @@ def audio_patch_rescale(content, style, content_freqs, style_freqs, content_feat
         weights = np.clip(shifted_style_env / (0.001 + content_env), 0, 10)
         output[:, t, :] = content_slice * weights[:, np.newaxis]
         # amplitude correction
-        output[:, t, :] *= np.clip(content_slice.max()/(output[:, t, :].max() + 0.001), 0, 10)
+        output[:, t, :] *= np.clip(content[:,t].max()/(output[:, t, :].max() + 0.001), 0, 10)
     return output
 
 def audio_patch_match_bad(
@@ -451,23 +451,30 @@ def stylize(content, style, content_path, style_path):
     console.timeEnd("pitch normalization")
 
     # Featurization
-    content_features = compute_features(content_normalized)
-    style_features = compute_features(style_normalized)
-    #content_features = get_feature_array(content_path) / 5
-    #console.stats(content_features)
-    #content_features = resize(content_features, (2048, content.shape[1]))
-    #style_features = get_feature_array(style_path) / 5
-    #console.stats(style_features)
-    #style_features = resize(style_features, (2048, style.shape[1]))
+    if True:
+        # spectral features
+        content_features = compute_features(content_normalized)
+        style_features = compute_features(style_normalized)
+    if False:
+        # neural features
+        content_features = get_feature_array(content_path) / 5
+        console.stats(content_features)
+        content_features = resize(content_features, (2048, content.shape[1]))
+        style_features = get_feature_array(style_path) / 5
+        console.stats(style_features)
+        style_features = resize(style_features, (2048, style.shape[1]))
 
-    # Harmonic recovery
-    content_harmonics = fundamental_to_harmonics(content_fundamental_freqs, content_fundamental_amps, content)
-    content_harmonics = grey_dilation(content_harmonics, size=3)
-    content_harmonics *= content.max() / content_harmonics.max()
 
     # Patchmatch
     console.time("patch match")
-    if False:
+    if True:
+        # Harmonic recovery
+        content_harmonics = fundamental_to_harmonics(content_fundamental_freqs, content_fundamental_amps, content)
+        content_harmonics = grey_dilation(content_harmonics, size=3)
+        content_harmonics *= content.max() / content_harmonics.max()
+        # Sibilant recovery
+        content_sibilants = get_sibilants(content, content_fundamental_amps)
+        content_sibilants *= content.max() / content_sibilants.max()
         stylized = audio_patch_rescale(
             content,
             style,
@@ -475,9 +482,10 @@ def stylize(content, style, content_path, style_path):
             style_fundamental_freqs,
             content_features,
             style_features,
-            content_harmonics
+            content_harmonics,
+            content_sibilants
         )
-    if True:
+    if False:
         stylized = audio_patch_match(
             content,
             style,
@@ -487,7 +495,7 @@ def stylize(content, style, content_path, style_path):
             style_features,
         )
     console.timeEnd("patch match")
-    # stylized = global_eq_match(content, style, harmonics)
+    #stylized = global_eq_match(stylized, style)
     # stylized = global_eq_match_2(content, style)
     return stylized
 
