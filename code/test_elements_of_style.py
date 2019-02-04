@@ -25,24 +25,34 @@ num_freq, num_timesteps, _ = content_amplitude.shape
 num_timesteps = min(num_timesteps, style_amplitude.shape[1])
 
 # Preprocessing - compute fundamentals and harmonics
+console.time("super resolution")
 content_fundamental_mask = sst.extract_fundamental(content_amplitude)
 content_fundamental_freqs, content_fundamental_amps = sst.extract_fundamental_freqs_amps(content_fundamental_mask, content_amplitude)
+content_sibilants = sst.get_sibilants(content_amplitude, content_fundamental_amps)
+conversion.image_to_file(content_sibilants, test_content_file + ".sibilants.jpg")
+console.log("finished sibilants")
 content_harmonics = sst.fundamental_to_harmonics(content_fundamental_freqs, content_fundamental_amps, content_amplitude)
 content_harmonics = dilation(content_harmonics)
 
+content_sibilants *= content_amplitude.max() / content_sibilants.max()
+console.stats(content_sibilants, "content sibilants")
 content_harmonics *= content_amplitude.max() / content_harmonics.max()
+console.stats(content_harmonics, "content harmonics")
+console.timeEnd("super resolution")
 
+console.time("frequency weighting")
 # ELEMENT 1: Frequency weighting
 for t in range(num_timesteps):
-    content_slice = np.maximum(content_amplitude[:, t], content_harmonics[:,t])
+    content_slice = np.maximum(content_amplitude[:, t], np.maximum(content_harmonics[:,t], content_sibilants[:,t]))
     style_slice = style_amplitude[:, t, :]
     content_env = sst.spectral_envelope(content_slice)
     style_env = sst.spectral_envelope(style_slice)
     weights = np.clip(style_env / (0.001 + content_env), 0, 5)
     stylized_amplitude[:, t, :] = content_slice * weights[:, np.newaxis]
     # amplitude correction
-    stylized_amplitude[:, t, :] *= np.clip(content_slice.max()/(stylized_amplitude[:, t, :].max() + 0.001), 0, 10)
+    stylized_amplitude[:, t, :] *= np.clip(content_amplitude[:,t].max()/(stylized_amplitude[:, t, :].max() + 0.001), 0, 10)
 
+console.timeEnd("frequency weighting")
 stylized_audio = conversion.amplitude_to_audio(stylized_amplitude, fft_window_size=1536, phase_iterations=1, phase=content_phase)
 conversion.image_to_file(stylized_amplitude, test_content_file + ".stylized-cheat.jpg")
 conversion.audio_to_file(stylized_audio, test_content_file + ".stylized-cheat.mp3")

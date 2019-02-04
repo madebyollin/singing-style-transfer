@@ -2,14 +2,15 @@
 import scipy
 import numpy as np
 from scipy.ndimage.morphology import grey_dilation, grey_erosion
-from skimage.feature import match_template
-from scipy.signal import convolve2d
+#from skimage.morphology import dilation # TODO: why
+#from skimage.feature import match_template
 from skimage import measure
+from skimage.transform import resize
+from scipy.signal import convolve2d
 import conversion
 import console
 import cv2
 import ipdb
-from skimage.transform import resize
 from ds_feature_extractor import get_feature_array
 
 
@@ -102,6 +103,29 @@ def extract_fundamental_freqs_amps(fundamental_mask, amplitude):
             fundamental_freqs[t] = alpha * fundamental_freqs[t - 1] + (1 - alpha) * fundamental_t
     return fundamental_freqs, fundamental_amps
 
+
+def get_sibilants(content_amplitude, content_fundamental_amps):
+    num_freqs, num_timesteps, _ = content_amplitude.shape
+    output = content_amplitude.copy()
+    clipped_amps = content_fundamental_amps.copy()
+    clipped_amps[clipped_amps < 0.5] = 0
+    output -= 2 * clipped_amps[np.newaxis,:,np.newaxis]
+    output = np.clip(output, 0, 1) # sigh
+    output = scipy.ndimage.filters.gaussian_filter1d(output, 4, axis=0, mode="nearest")
+    clipped_output = np.clip(output,0,1)
+    thresh = 0.3
+    clipped_output[output > thresh] = 1
+    clipped_output[output <= thresh] = 0
+    #ipdb.set_trace()
+    clipped_output = grey_erosion((clipped_output * 255), structure=np.ones((32, 1, 1))) / 255.0
+    # who cares about low frequencies not me no thank you i want sibilants
+    clipped_output[:300] = 0 # HACK
+    output *= clipped_output
+    output[output > 0.1] *= 4 # HAAAACCCCK
+    output = np.clip(output, 0, 1)
+    output = scipy.ndimage.filters.gaussian_filter1d(output, 128, axis=0, mode="nearest")
+    output = np.sqrt(output)
+    return output
 
 def fundamental_to_harmonics(fundamental_freqs, fundamental_amps, amplitude):
     harmonics = np.zeros(amplitude.shape)
@@ -268,22 +292,17 @@ def compute_features(amplitude):
     features /= np.clip(np.mean(features, axis=1)[:, np.newaxis], 0.25, 4)
     features = np.clip(features, 0, 10)
     # weight higher frequencies less
-    weights = 1 - np.linspace(0, 1, num=features.shape[0])
-    weights[:5] = 0  # lol
+    #weights = 1 - np.linspace(0, 1, num=features.shape[0])
+    weights = np.ones(features.shape[0])
+    weights[:20] = 0  # lol
+    weights[200:] = 0  # lol
     # the output is [num_features x time]
     return weights[:, np.newaxis] * features
 
 
-def audio_patch_match(content, style, content_freqs, style_freqs, content_features, style_features):
-    console.log("content.shape:", content.shape)
-    console.log("content_features.shape:", content_features.shape)
-    console.log("style.shape:", style.shape)
-    console.log("style_features.shape:", style_features.shape)
-    # setup
-    output = np.zeros(content.shape)
-    num_freqs, num_timesteps, num_channels = content.shape
-    _, num_timesteps_style, _ = style.shape
-    # initialization of nnf, size is num_timesteps
+def compute_nnf(content_features, style_features):
+    _, num_timesteps = content_features.shape
+    _, num_timesteps_style = style_features.shape
     nnf = (np.random.uniform(low=-1, high=1, size=num_timesteps) * num_timesteps_style).astype(
         np.int32
     )
@@ -303,11 +322,9 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
     # https://gfx.cs.princeton.edu/pubs/Barnes_2009_PAR/patchmatch.pdf
     # TODO: iterative supersampling of priors so we don't have to do all this work each iteration
     iterations = 8
-    amps = np.max(content, axis=(0, 2))
     for _ in range(iterations):
         # iteratively improve the correspondence_field
         for t in range(num_timesteps):
-            amp = amps[t]
             # propagation
             # TODO: numpyify all this
             possible_offsets = nnf[t - 1 : t + 1].tolist()
@@ -333,14 +350,23 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
                     best_offset = off
                     best_offset_dist = offset_dist
             nnf[t] = best_offset % num_timesteps_style
+    return nnf
+
+def audio_patch_match(content, style, content_freqs, style_freqs, content_features, style_features):
+    # setup
+    output = np.zeros(content.shape)
+    num_freqs, num_timesteps, num_channels = content.shape
+    _, num_timesteps_style, _ = style.shape
+    
+    nnf = compute_nnf(content_features, style_features)
     # now, we just assign the thingy wingies
     for t in range(num_timesteps):
         s = (t + nnf[t]) % num_timesteps_style
         freq_stretch = content_freqs[t] / style_freqs[s]
         if not (0.5 < freq_stretch < 5):
             freq_stretch = 1
+        # Version 1: actual patch copying
         output[:, t] = formant_preserving_scale_one_column(style[:, s], freq_stretch)
-        # TODO: why is this even necessary
         # basically, rescale amplitude by content amplitude, or mute it if content is quiet
         output_max = output[:, t].max()
         content_max = content[:, t].max()
@@ -349,6 +375,29 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
             output[:, t] *= scaling_factor
     return output
 
+def audio_patch_rescale(content, style, content_freqs, style_freqs, content_features, style_features, content_harmonics):
+    # setup
+    output = np.zeros(content.shape)
+    num_freqs, num_timesteps, num_channels = content.shape
+    _, num_timesteps_style, _ = style.shape
+    
+    nnf = compute_nnf(content_features, style_features)
+    for t in range(num_timesteps):
+        s = (t + nnf[t]) % num_timesteps_style
+        freq_stretch = content_freqs[t] / style_freqs[s]
+        if not (0.5 < freq_stretch < 5):
+            freq_stretch = 1
+
+        content_slice = np.maximum(content[:, t], content_harmonics[:,t])
+        style_slice = style[:, s]
+        #style_env = spectral_envelope(style_slice)
+        shifted_style_env = spectral_envelope(formant_preserving_scale_one_column(style_slice, freq_stretch))
+        content_env = spectral_envelope(content_slice)
+        weights = np.clip(shifted_style_env / (0.001 + content_env), 0, 10)
+        output[:, t, :] = content_slice * weights[:, np.newaxis]
+        # amplitude correction
+        output[:, t, :] *= np.clip(content_slice.max()/(output[:, t, :].max() + 0.001), 0, 10)
+    return output
 
 def audio_patch_match_bad(
     content, style, content_freqs, style_freqs, content_features, style_features
@@ -402,23 +451,41 @@ def stylize(content, style, content_path, style_path):
     console.timeEnd("pitch normalization")
 
     # Featurization
-    '''content_features = compute_features(content_normalized)
-    style_features = compute_features(style_normalized)''' 
-    content_features = get_feature_array(content_path)
-    content_features = resize(content_features, (2048, content.shape[1]))
-    style_features = get_feature_array(style_path)
-    style_features = resize(style_features, (2048, style.shape[1]))
+    content_features = compute_features(content_normalized)
+    style_features = compute_features(style_normalized)
+    #content_features = get_feature_array(content_path) / 5
+    #console.stats(content_features)
+    #content_features = resize(content_features, (2048, content.shape[1]))
+    #style_features = get_feature_array(style_path) / 5
+    #console.stats(style_features)
+    #style_features = resize(style_features, (2048, style.shape[1]))
+
+    # Harmonic recovery
+    content_harmonics = fundamental_to_harmonics(content_fundamental_freqs, content_fundamental_amps, content)
+    content_harmonics = grey_dilation(content_harmonics, size=3)
+    content_harmonics *= content.max() / content_harmonics.max()
 
     # Patchmatch
     console.time("patch match")
-    stylized = audio_patch_match(
-        content,
-        style,
-        content_fundamental_freqs,
-        style_fundamental_freqs,
-        content_features,
-        style_features,
-    )
+    if False:
+        stylized = audio_patch_rescale(
+            content,
+            style,
+            content_fundamental_freqs,
+            style_fundamental_freqs,
+            content_features,
+            style_features,
+            content_harmonics
+        )
+    if True:
+        stylized = audio_patch_match(
+            content,
+            style,
+            content_fundamental_freqs,
+            style_fundamental_freqs,
+            content_features,
+            style_features,
+        )
     console.timeEnd("patch match")
     # stylized = global_eq_match(content, style, harmonics)
     # stylized = global_eq_match_2(content, style)
