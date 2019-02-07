@@ -131,8 +131,8 @@ Implement components that:
     - [x] [1h] Fix the skeleton code to preserve the phase, or at least do it in mono
 - **Week 3-5:**
     - [x] **[all]** Take notes on stylistic differences between Rolling in the Deep acapellas (in `data/aligned/rolling_in_the_deep`) to see if we're missing any elements of style
-    - [ ] **[all]** Take notes on stylistic differences between Young and Beautiful acapellas (in `data/aligned/young_and_beautiful`) to see if we're missing any elements of style
-    - [ ] **[ollin]** Implement super-resolution (recovery of high-frequency detail)
+    - [ ] ~~**[all]** Take notes on stylistic differences between Young and Beautiful acapellas (in `data/aligned/young_and_beautiful`) to see if we're missing any elements of style~~
+    - [x] **[ollin]** Implement super-resolution (recovery of high-frequency detail)
         - [x] Implement fundamental frequency detection (rule-based or learned)
         - [x] Implement harmonic super-resolution (duplicating the fundamental curve up to higher octaves... this may be doable with some fancy fourier transform magic - using a saw wave instead of a sin wave somehow - but we can also just do it graphically).
         - [x] Add multiple-harmonic sampling to fundamental detection so it's more accurate (right now it's sorta glitchy)
@@ -143,20 +143,26 @@ Implement components that:
         - [x] The output is interesting but not great. Using better features will help, but we may still also need to synthesize missing sounds somehow...
     - [x] **[2h, ollin]** Implement or figure out how to use a pitch warping + formant correction thingy so that we can pitch warp when patch matching without messing up the audio
         - [x] We can test this by using the pitch normalization experiment (already works) and making sure that our formant correction on top of this generates plausible output.
-    - [ ] **[lia4 / josephz]** Test using DeepSpeech featurizer for matching (i.e. using basic clone-stamp method)
+    - [x] **[lia4 / josephz]** Test using DeepSpeech featurizer for matching (i.e. using basic clone-stamp method)
         - [x] Install DS code and run it on sample acapella (tested; actual text output is not correct but features should still work)
         - [x] **[4h]** Recover features from early-layer activations (so, we have a component that goes raw audio -> big vector thing that is hopefully semantically meaningful)
         - [x] **[2h]** Test feature-based clone-stamping
         - [x] **[2h]** Test feature-based clone-stamping with pitch warping
         - [x] **[6h]** Test feature-based clone-stamping with pitch warping and formant correction
-    - [ ] Test out neural-network image-to-image approaches (e.g. the fast photo style transfer thing) so that we have some baseline of what results modern end-to-end systems yield
+    - [x] ~~Test out neural-network image-to-image approaches (e.g. the fast photo style transfer thing) so that we have some baseline of what results modern end-to-end systems yield~~ nvm
         - [x] ~~https://github.com/NVIDIA/FastPhotoStyle~~ this probably won't work
         - [x] ~~https://github.com/msracver/Deep-Image-Analogy~~ we're using this as a reference!
         - [ ] Try https://github.com/pkmital/time-domain-neural-audio-style-transfer
 - **Week 5-7:**
-    - Test alternate featurizers if performance of DS is not good
-        - [ ] https://github.com/fordDeepDSP/deepSpeech/issues/13 e.g. https://drive.google.com/file/d/1E65g4HlQU666RhgY712Sn6FuU2wvZTnQ/view
-    - Implement initial draft of post-processing networks
+    - [ ] Fixes to current pipeline
+        - [ ] **[ollin]** There's probably a bug or two in the harmonic reweighting version of sst.py right now, the output sounds worse than patch matching even though my testing code shows that harmonic reweighting should sound great.
+        - [ ] **[andrew / joseph]** Figure out why deepspeech features are incorrectly sized and how to properly correct for this, rather than just blindly rescaling the features bilinearly :P
+        - [ ] **[andrew / joseph]** Clean up DeepSpeech feature-retrieval code to be faster and less hacky (shouldn't need to write to temp files, shouldn't need to have python calling a shell script calling python, should be able to batch multiple inputs)
+    - [ ] **[??]** Make visualizations to show patchmatch quality (e.g. visualizing the per-sample distance values, as well as the overall nearest-neighbor field), compare quality across different choices of hyperparameters (e.g. a deeper search), and generally try to figure out how/if our patch correspondences can be improved. 
+        - [ ] If the conclusion is that patchmatch can't _find_ good patches, because of lack of continuity in the feature vectors, we may need to switch to a lookup-based approach (e.g. kd trees), hybrid approach (splitting the style image into consonant and vowel sub-components and only searching in the correct one), or just cheat by blurring the feature vectors along the time axis. 
+        - [ ] If the conclusion is that *good patches don't exist* (because the style audio does not necessarily contain all of the necessary consonant / vowel sounds), we need to figure out how to resynthesize them and add this to the search.
+        - [ ] If the conclusion is that both the harmonic features and the deepspeech features are garbage for matching, and patchmatch on them is doomed, test alternate featurizers https://github.com/fordDeepDSP/deepSpeech/issues/13 e.g. https://drive.google.com/file/d/1E65g4HlQU666RhgY712Sn6FuU2wvZTnQ/view
+    - [ ] Implement initial draft of post-processing networks
         - [ ] Implement image-to-image post-processor regressing on clean spectrograms from distorted/glitchy spectrograms (can generate training data by stylizing as arbitrary style and then stylizing back).
         - [ ] Test out a wavenet-like post-processor on the actual audio files themselves. This may not work, but it would be cool if it did.
 - **Week 7-9:**
