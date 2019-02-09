@@ -2,7 +2,7 @@
 
 - **Week 5-7:**
     - [ ] Fixes to current pipeline
-        - [ ] **[ollin]** There's probably a bug or two in the harmonic reweighting version of sst.py right now, the output sounds worse than patch matching even though my testing code shows that harmonic reweighting should sound great.
+        - [x] **[ollin]** There's probably a bug or two in the harmonic reweighting version of sst.py right now, the output sounds worse than patch matching even though my testing code shows that harmonic reweighting should sound great. **EDIT:** Fixed now, I was 1) not pitch normalizing correctly in the harmonic feature computation and 2) reweighting the original content instead of the super-resolution content
         - [ ] **[andrew / joseph]** Figure out why deepspeech features are incorrectly sized and how to properly correct for this, rather than just blindly rescaling the features bilinearly :P
         - [ ] **[andrew / joseph]** Clean up DeepSpeech feature-retrieval code to be faster and less hacky (shouldn't need to write to temp files, shouldn't need to have python calling a shell script calling python, should be able to batch multiple inputs)
     - [ ] **[??]** Make visualizations to show patchmatch quality (e.g. visualizing the per-sample distance values, as well as the overall nearest-neighbor field), compare quality across different choices of hyperparameters (e.g. a deeper search), and generally try to figure out how/if our patch correspondences can be improved. 
