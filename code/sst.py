@@ -2,8 +2,6 @@
 import scipy
 import numpy as np
 from scipy.ndimage.morphology import grey_dilation, grey_erosion
-#from skimage.morphology import dilation # TODO: why
-#from skimage.feature import match_template
 from skimage import measure
 from skimage.transform import resize
 from scipy.signal import convolve2d
@@ -12,6 +10,7 @@ import console
 import cv2
 import ipdb
 from ds_feature_extractor import get_feature_array
+import matplotlib.pyplot as plt
 
 
 def draw_harmonic_slice(spectrogram, t, f0, f1, alpha0, alpha1):
@@ -109,23 +108,23 @@ def get_sibilants(content_amplitude, content_fundamental_amps):
     output = content_amplitude.copy()
     clipped_amps = content_fundamental_amps.copy()
     clipped_amps[clipped_amps < 0.5] = 0
-    output -= 2 * clipped_amps[np.newaxis,:,np.newaxis]
-    output = np.clip(output, 0, 1) # sigh
+    output -= 2 * clipped_amps[np.newaxis, :, np.newaxis]
+    output = np.clip(output, 0, 1)  # sigh
     output = scipy.ndimage.filters.gaussian_filter1d(output, 4, axis=0, mode="nearest")
-    clipped_output = np.clip(output,0,1)
+    clipped_output = np.clip(output, 0, 1)
     thresh = 0.3
     clipped_output[output > thresh] = 1
     clipped_output[output <= thresh] = 0
-    #ipdb.set_trace()
     clipped_output = grey_erosion((clipped_output * 255), structure=np.ones((32, 1, 1))) / 255.0
-    # who cares about low frequencies not me no thank you i want sibilants
-    clipped_output[:300] = 0 # HACK
+    # TODO: these parts are hacky :(
+    clipped_output[:300] = 0
     output *= clipped_output
-    output[output > 0.1] *= 4 # HAAAACCCCK
+    output[output > 0.1] *= 4
     output = np.clip(output, 0, 1)
     output = scipy.ndimage.filters.gaussian_filter1d(output, 128, axis=0, mode="nearest")
     output = np.sqrt(output)
     return output
+
 
 def fundamental_to_harmonics(fundamental_freqs, fundamental_amps, amplitude):
     harmonics = np.zeros(amplitude.shape)
@@ -144,7 +143,6 @@ def fundamental_to_harmonics(fundamental_freqs, fundamental_amps, amplitude):
                     fundamental_amps[s],
                     fundamental_amps[t],
                 )
-                # draw_harmonic_slice(harmonics, t, fundamental_freqs[s]*i, fundamental_freqs[t]*i, 1,1)
     return harmonics
 
 
@@ -204,8 +202,7 @@ def extract_fundamental(amplitude):
             (np.array(range(f_band_min, 0)) / f_band_min, np.array(range(f_band_max)) / f_band_max)
         )
     )[:, np.newaxis]
-    peak_finder = np.array([-0.5, -0.5, 2, -.5, -.5])[:, np.newaxis].T
-    # convolved = convolve2d(np.mean(amplitude, axis=2), peak_finder, mode="same")
+    peak_finder = np.array([-0.5, -0.5, 2, -0.5, -0.5])[:, np.newaxis].T
     console.time("big loop")
     freqs = np.argmax(np.mean(amplitude[:50], axis=2), axis=0)
     console.stats(freqs)
@@ -229,7 +226,6 @@ def extract_fundamental(amplitude):
         > 0.1
     )
     console.timeEnd("remove dots")
-    # conversion.image_to_file(mask, "mask_" + str(amplitude.shape) + ".png")
     fundamental *= mask
     return fundamental
 
@@ -238,25 +234,7 @@ def spectral_envelope(amplitude):
     axis = (1, 2)
     if amplitude.ndim == 2:  # single column
         axis = (1,)
-    return scipy.ndimage.filters.gaussian_filter1d(np.mean(amplitude, axis=axis), 10)
-
-
-def global_eq_match_2(content, style):
-    content_mean_freq = np.mean(content, axis=(1, 2))
-    style_mean_freq = np.mean(style, axis=(1, 2))
-
-    # apply maximum filter
-    content_mean_freq = scipy.ndimage.filters.maximum_filter1d(content_mean_freq, 50)
-    style_mean_freq = scipy.ndimage.filters.maximum_filter1d(style_mean_freq, 50)
-
-    weights = style_mean_freq / content_mean_freq
-    weights = np.clip(weights, 0, 2)
-    # conversion.image_to_file(np.broadcast_to(weights[:,np.newaxis,np.newaxis], content.shape), "sample/weights.png")
-    # weights = scipy.ndimage.filters.gaussian_filter1d(weights, 10)
-
-    stylized = (content.T * weights).T
-    assert stylized.shape == content.shape
-    return stylized / stylized.max()
+    return scipy.ndimage.filters.gaussian_filter1d(np.mean(amplitude, axis=axis), 8)
 
 
 def global_eq_match(content, style):
@@ -264,38 +242,28 @@ def global_eq_match(content, style):
     :param content:
     :param style:
     """
-    #content = np.maximum(content, harmonics / harmonics.max() * content.max())  # lol
+    # content = np.maximum(content, harmonics / harmonics.max() * content.max())  # lol
     gf = lambda x: scipy.ndimage.filters.gaussian_filter1d(x, 10)
     content_mean_freq = gf(np.mean(content, axis=(1, 2)))
     style_mean_freq = gf(np.mean(style, axis=(1, 2)))
 
     weights = style_mean_freq / content_mean_freq
     weights = np.clip(weights, 0, 2)
-    stylized = weights[:,np.newaxis,np.newaxis] * content
+    stylized = weights[:, np.newaxis, np.newaxis] * content
     stylized *= content.max() / stylized.max()
 
-    # TODO: figure out how to actually do this correctly :P
-    # additive_weights = np.clip(style_mean_freq - content_mean_freq,0,10)
-    # console.stats(stylized, "stylized before additive weights")
-    # added_weights = (harmonics.T * additive_weights / harmonics.max()).T
-    # stylized = np.maximum(stylized, 2 * added_weights * style.max())
-    # console.stats(stylized, "stylized after additive weights")
-    # console.stats(added_weights, "added_weights")
     assert stylized.shape == content.shape
     return stylized
 
 
 def compute_features(amplitude):
-    # TODO: replace this with DeepSpeech layer 5
-    features = measure.block_reduce(np.mean(amplitude, 2), (4, 1), np.max)
-    features[:10] = 0
-    features[48:] = 0
+    features = measure.block_reduce(np.mean(amplitude, 2)[10:128], (4, 1), np.max)
     # remove global frequency dist
     features /= np.clip(np.mean(features, axis=1)[:, np.newaxis], 0.25, 4)
     features = np.clip(features, 0, 10)
-    features /= np.clip(features.max(axis=0),0.25, 10)
+    features /= np.clip(features.max(axis=0), 0.25, 10)
     # weight higher frequencies less
-    #weights = 1 - np.linspace(0, 1, num=features.shape[0])
+    # weights = 1 - np.linspace(0, 1, num=features.shape[0])
     # the output is [num_features x time]
     return features
 
@@ -314,14 +282,14 @@ def compute_nnf(content_features, style_features):
         s = style_features[:, style_t]
         return np.sum(np.abs(c - s)) / len(c)
 
-    w = 1024  # arbitrary constant
+    w = 512  # arbitrary constant
     # THIS BLOCK IS THE PATCH MATCH ALGORITHM
     # the only important result is the values in nnf, which tells you
     # which part of the style to draw from, for each part of the content
     # code following paper this one
     # https://gfx.cs.princeton.edu/pubs/Barnes_2009_PAR/patchmatch.pdf
     # TODO: iterative supersampling of priors so we don't have to do all this work each iteration
-    iterations = 8
+    iterations = 5
     for _ in range(iterations):
         # iteratively improve the correspondence_field
         for t in range(num_timesteps):
@@ -352,20 +320,20 @@ def compute_nnf(content_features, style_features):
             nnf[t] = best_offset % num_timesteps_style
     return nnf
 
+
 def audio_patch_match(content, style, content_freqs, style_freqs, content_features, style_features):
     # setup
     output = np.zeros(content.shape)
     num_freqs, num_timesteps, num_channels = content.shape
     _, num_timesteps_style, _ = style.shape
-    
+
     nnf = compute_nnf(content_features, style_features)
-    # now, we just assign the thingy wingies
+    # apply the nnf to generate the output audio
     for t in range(num_timesteps):
         s = (t + nnf[t]) % num_timesteps_style
         freq_stretch = content_freqs[t] / style_freqs[s]
         if not (0.5 < freq_stretch < 5):
             freq_stretch = 1
-        # Version 1: actual patch copying
         output[:, t] = formant_preserving_scale_one_column(style[:, s], freq_stretch)
         # basically, rescale amplitude by content amplitude, or mute it if content is quiet
         output_max = output[:, t].max()
@@ -375,53 +343,42 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
             output[:, t] *= scaling_factor
     return output
 
-def audio_patch_rescale(content, style, content_freqs, style_freqs, content_features, style_features, content_harmonics, content_sibilants):
+
+def audio_patch_rescale(
+    content,
+    style,
+    content_freqs,
+    style_freqs,
+    content_features,
+    style_features,
+    content_harmonics,
+    content_sibilants,
+):
     # setup
     output = np.zeros(content.shape)
     num_freqs, num_timesteps, num_channels = content.shape
     _, num_timesteps_style, _ = style.shape
-    
+
     nnf = compute_nnf(content_features, style_features)
+    target_envs = np.zeros((num_freqs, num_timesteps))
+    content_envs = np.zeros((num_freqs, num_timesteps))
+    super_res_content = np.maximum(content, np.maximum(content_harmonics, content_sibilants))
     for t in range(num_timesteps):
         s = (t + nnf[t]) % num_timesteps_style
         freq_stretch = content_freqs[t] / style_freqs[s]
         if not (0.5 < freq_stretch < 5):
             freq_stretch = 1
 
-        content_slice = np.maximum(content[:, t], np.maximum(content_harmonics[:,t], content_sibilants[:,t]))
+        content_slice = super_res_content[:, t]
         style_slice = style[:, s]
-        #style_env = spectral_envelope(style_slice)
-        shifted_style_env = spectral_envelope(formant_preserving_scale_one_column(style_slice, freq_stretch))
-        content_env = spectral_envelope(content_slice)
-        weights = np.clip(shifted_style_env / (0.001 + content_env), 0, 10)
-        output[:, t, :] = content_slice * weights[:, np.newaxis]
-        # amplitude correction
-        output[:, t, :] *= np.clip(content[:,t].max()/(output[:, t, :].max() + 0.001), 0, 10)
-    return output
-
-def audio_patch_match_bad(
-    content, style, content_freqs, style_freqs, content_features, style_features
-):
-    patch_size = 8
-    output = np.zeros(content.shape)
-    num_identity_stretches = 0
-    for t in range(content_features.shape[1] // patch_size):
-        slice_start = t * patch_size
-        slice_end = slice_start + patch_size
-        content_patch = content_features[:, slice_start:slice_end]
-        matching_scores = match_template(style_features, content_patch)
-        best_patch_t = np.argmax(matching_scores)
-        # ipdb.set_trace()
-        best_patch = style[:, best_patch_t : best_patch_t + patch_size]
-        # output[:, slice_start:slice_end] = best_patch
-        for p in range(patch_size):
-            freq_stretch = content_freqs[slice_start + p] / style_freqs[best_patch_t + p]
-            # freq_stretch = 32 / style_freqs[best_patch_t + p]
-            if not (0.5 < freq_stretch < 10):
-                freq_stretch = 1
-                num_identity_stretches += 1
-            best_patch_scaled = formant_preserving_scale_one_column(best_patch[:, p], freq_stretch)
-            output[:, slice_start + p] = best_patch_scaled
+        shifted_style_slice = formant_preserving_scale_one_column(style_slice, freq_stretch)
+        shifted_style_env = spectral_envelope(shifted_style_slice)
+        target_envs[:, t] = shifted_style_env
+        content_envs[:, t] = spectral_envelope(content_slice)
+    weights = np.clip(target_envs / (0.001 + content_envs), 0, 5)
+    output = super_res_content * weights[:, :, np.newaxis]
+    # amplitude correction
+    output *= np.clip(content.max(axis=0) / (output.max(axis=0) + 0.001), 0, 10)
     return output
 
 
@@ -443,19 +400,20 @@ def stylize(content, style, content_path, style_path):
     # Pitch normalization
     console.time("pitch normalization")
     content_normalized, _ = normalize_pitch(
-        content, None, content_fundamental_freqs, content_fundamental_amps
+        content, None, content_fundamental_freqs, content_fundamental_amps, base_pitch=32
     )
     style_normalized, _ = normalize_pitch(
-        style, None, style_fundamental_freqs, style_fundamental_amps
+        style, None, style_fundamental_freqs, style_fundamental_amps, base_pitch=32
     )
     console.timeEnd("pitch normalization")
 
     # Featurization
-    if True:
+    use_spectral_features = True
+    if use_spectral_features:
         # spectral features
         content_features = compute_features(content_normalized)
         style_features = compute_features(style_normalized)
-    if False:
+    if not use_spectral_features:
         # neural features
         content_features = get_feature_array(content_path) / 5
         console.stats(content_features)
@@ -464,12 +422,13 @@ def stylize(content, style, content_path, style_path):
         console.stats(style_features)
         style_features = resize(style_features, (2048, style.shape[1]))
 
-
     # Patchmatch
     console.time("patch match")
     if True:
         # Harmonic recovery
-        content_harmonics = fundamental_to_harmonics(content_fundamental_freqs, content_fundamental_amps, content)
+        content_harmonics = fundamental_to_harmonics(
+            content_fundamental_freqs, content_fundamental_amps, content
+        )
         content_harmonics = grey_dilation(content_harmonics, size=3)
         content_harmonics *= content.max() / content_harmonics.max()
         # Sibilant recovery
@@ -483,7 +442,7 @@ def stylize(content, style, content_path, style_path):
             content_features,
             style_features,
             content_harmonics,
-            content_sibilants
+            content_sibilants,
         )
     if False:
         stylized = audio_patch_match(
@@ -495,16 +454,18 @@ def stylize(content, style, content_path, style_path):
             style_features,
         )
     console.timeEnd("patch match")
-    #stylized = global_eq_match(stylized, style)
-    # stylized = global_eq_match_2(content, style)
+    # stylized = global_eq_match(stylized, style)
     return stylized
 
 
 def main():
     sample_dir = "sample"
-    sample_names = ["rolling_in_the_deep", "one_more_time"]
+    # sample_names = ["rolling_in_the_deep", "one_more_time"]
+    sample_names = ["rolling_in_the_deep"]
+    # sample_names = ["rolling_in_the_one_more_time"]
     for sample_name in sample_names:
         console.h1("Processing %s" % sample_name)
+        console.time("total processing for " + sample_name)
         sample_path = sample_dir + "/" + sample_name
 
         style_path = sample_path + "/style.mp3"
@@ -521,7 +482,6 @@ def main():
         content_img, content_phase = conversion.audio_to_spectrogram(
             content_audio, fft_window_size=1536
         )
-
         stylized_img = stylize(content_img, style_img, content_path, style_path)
         stylized_audio = conversion.amplitude_to_audio(
             stylized_img, fft_window_size=1536, phase_iterations=1, phase=content_phase
@@ -530,6 +490,7 @@ def main():
         # Save stylized spectrogram and audio.
         conversion.image_to_file(stylized_img, stylized_img_path)
         conversion.audio_to_file(stylized_audio, stylized_audio_path)
+        console.timeEnd("total processing for " + sample_name)
         console.info("Finished processing %s; saved to %s" % (sample_name, stylized_audio_path))
 
 
