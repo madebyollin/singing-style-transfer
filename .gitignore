@@ -27,6 +27,8 @@ stylized.*
 **/stylized.*
 */stylized.*
 fundamental.*
+!progress/*/*.mp3
+!progress/*/*.png
 
 # Big stuff
 models/
