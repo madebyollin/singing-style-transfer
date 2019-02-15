@@ -408,7 +408,7 @@ def stylize(content, style, content_path, style_path):
     console.timeEnd("pitch normalization")
 
     # Featurization
-    use_spectral_features = True
+    use_spectral_features = False
     if use_spectral_features:
         # spectral features
         content_features = compute_features(content_normalized)
