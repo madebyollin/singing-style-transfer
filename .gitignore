@@ -27,8 +27,11 @@ stylized.*
 **/stylized.*
 */stylized.*
 fundamental.*
+!progress/*/*.mp3
+!progress/*/*.png
 
 # Big stuff
 models/
 data/
 *.jpg
+extern/DeepSpeech/deepspeech-0.4.1-checkpoint

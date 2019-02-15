@@ -257,18 +257,20 @@ def global_eq_match(content, style):
 
 
 def compute_features(amplitude):
-    features = measure.block_reduce(np.mean(amplitude, 2)[10:128], (4, 1), np.max)
+    features = measure.block_reduce(np.mean(amplitude, 2), (2, 1), np.max)
+    features = features[5:192]
+    # features = np.mean(amplitude, 2)
     # remove global frequency dist
     features /= np.clip(np.mean(features, axis=1)[:, np.newaxis], 0.25, 4)
     features = np.clip(features, 0, 10)
-    features /= np.clip(features.max(axis=0), 0.25, 10)
+    # features /= np.clip(features.max(axis=0), 0.25, 10)
     # weight higher frequencies less
     # weights = 1 - np.linspace(0, 1, num=features.shape[0])
     # the output is [num_features x time]
     return features
 
 
-def compute_nnf(content_features, style_features):
+def compute_nnf(content_features, style_features, iterations=10):
     _, num_timesteps = content_features.shape
     _, num_timesteps_style = style_features.shape
     nnf = (np.random.uniform(low=-1, high=1, size=num_timesteps) * num_timesteps_style).astype(
@@ -289,7 +291,6 @@ def compute_nnf(content_features, style_features):
     # code following paper this one
     # https://gfx.cs.princeton.edu/pubs/Barnes_2009_PAR/patchmatch.pdf
     # TODO: iterative supersampling of priors so we don't have to do all this work each iteration
-    iterations = 5
     for _ in range(iterations):
         # iteratively improve the correspondence_field
         for t in range(num_timesteps):
@@ -311,7 +312,9 @@ def compute_nnf(content_features, style_features):
                 s = t + off
                 # penalize changing style source-regions in the middle of a loud part of the content
                 # probably shouldn't be necessary
-                # consistency_penalty = amp * 200 * abs(nnf[t - 1] - off) / num_timesteps_style
+                # consistency_penalty = (
+                #     np.max(content_features[:, t]) * abs(nnf[t - 1] - off) / num_timesteps_style
+                # )
                 consistency_penalty = 0
                 offset_dist = distance(t, s) + consistency_penalty
                 if best_offset is None or offset_dist < best_offset_dist:
@@ -327,7 +330,8 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
     num_freqs, num_timesteps, num_channels = content.shape
     _, num_timesteps_style, _ = style.shape
 
-    nnf = compute_nnf(content_features, style_features)
+    nnf = compute_nnf(content_features, style_features, iterations=50)
+    # np.save("/Users/ollin/Desktop/optimal_nnf.npy", nnf)
     # apply the nnf to generate the output audio
     for t in range(num_timesteps):
         s = (t + nnf[t]) % num_timesteps_style
@@ -359,10 +363,18 @@ def audio_patch_rescale(
     num_freqs, num_timesteps, num_channels = content.shape
     _, num_timesteps_style, _ = style.shape
 
+    # DEBUG: testing optimal thingy
     nnf = compute_nnf(content_features, style_features)
+    # nnf = np.load("/Users/ollin/Desktop/optimal_nnf.npy")
+    # fix slight differences in length
+    # if len(nnf) < num_timesteps:
+    #     nnf = np.pad(nnf, (num_timesteps - len(nnf),))
+    # elif len(nnf) > num_timesteps:
+    #     nnf = nnf[:num_timesteps]
+
     target_envs = np.zeros((num_freqs, num_timesteps))
     content_envs = np.zeros((num_freqs, num_timesteps))
-    super_res_content = np.maximum(content, np.maximum(content_harmonics, content_sibilants))
+    super_res_content = np.maximum(content, 0.5 * np.maximum(content_harmonics, content_sibilants))
     for t in range(num_timesteps):
         s = (t + nnf[t]) % num_timesteps_style
         freq_stretch = content_freqs[t] / style_freqs[s]
@@ -413,18 +425,24 @@ def stylize(content, style, content_path, style_path):
         # spectral features
         content_features = compute_features(content_normalized)
         style_features = compute_features(style_normalized)
+        # content_features = compute_features(content)
+        # style_features = compute_features(style)
     if not use_spectral_features:
         # neural features
         content_features = get_feature_array(content_path) / 5
-        console.stats(content_features)
+        console.stats(content_features, "content features")
+        conversion.image_to_file(content_features[:,:,np.newaxis], "content_features.png")
+        console.debug(content.shape, "content.shape")
         content_features = resize(content_features, (2048, content.shape[1]))
         style_features = get_feature_array(style_path) / 5
-        console.stats(style_features)
+        console.stats(style_features, "style features")
+        console.debug(style.shape, "style.shape")
+        conversion.image_to_file(style_features[:,:,np.newaxis], "style_features.png")
         style_features = resize(style_features, (2048, style.shape[1]))
 
     # Patchmatch
     console.time("patch match")
-    if True:
+    if False:
         # Harmonic recovery
         content_harmonics = fundamental_to_harmonics(
             content_fundamental_freqs, content_fundamental_amps, content
@@ -444,7 +462,7 @@ def stylize(content, style, content_path, style_path):
             content_harmonics,
             content_sibilants,
         )
-    if False:
+    if True:
         stylized = audio_patch_match(
             content,
             style,
@@ -462,6 +480,7 @@ def main():
     sample_dir = "sample"
     # sample_names = ["rolling_in_the_deep", "one_more_time"]
     sample_names = ["rolling_in_the_deep"]
+    # sample_names = ["perfect_features"]
     # sample_names = ["rolling_in_the_one_more_time"]
     for sample_name in sample_names:
         console.h1("Processing %s" % sample_name)
