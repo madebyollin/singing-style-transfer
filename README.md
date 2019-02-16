@@ -8,6 +8,14 @@
         - [ ] **[ollin]** Make PatchMatch faster if possible, right now it takes too long with high iteration counts (~20).
         - [ ] **[??]** Test if using pitch-normalized inputs improves DS feature matching results, and, if so, switch to doing that.
     - [ ] **[All]** Implement initial draft of post-processing networks (see [notes/post_processing_net.md](notes/post_processing_net.md) in the repo)
+        - [ ] **[josephz/andrew]** Implement model architecture in Keras.
+            - Assume that the data is already in `x/0001.npy`, `y/0001.npy`
+            - The input is just a multi-channel spectrogram, the output is a spectrogram. 
+            - For now, you can just load the data from images for our one example, and make sure it can overfit.
+                - [ ] **[josephz/andrew]**: Overfit to our `rolling_in_the_deep.mp3` song
+        - [ ] **[ollin]** Implement training data generator, saves `x/0001.npy` spectrogram and `y/0001.npy` to numpy files.
+            - [ ] Make two versions: one pre-tiled, the other not
+                - The idea is to make it such that the non-tiled emulates our end to end pipeline
     - [ ] **[??]** Test the primary source of PatchMatch error by comparing the MSE in feature space between our PatchMatch reconstruction and an n^2 nearest-neighbor search.
         - [ ] **If n^2 search is better (low prior):** If the conclusion is that PatchMatch can't _find_ good patches, because of lack of continuity in the feature vectors, we may need to switch to a lookup-based approach (e.g. kd trees), hybrid approach (splitting the style image into consonant and vowel sub-components and only searching in the correct one), cheat by blurring the feature vectors along the time axis, or just run PatchMatch with higher iteration counts.
         - [ ] **If both are equal (high prior):** then we need to determine if the issue is that our features are bad, or that good matches don't exist. We can do this by comparing the results of PatchMatch using the actual style (which doesn't necessarily have good matches) and the "reference_stylized" as the style (which necessarily has good matches for everything).
