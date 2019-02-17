@@ -364,8 +364,8 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
     num_freqs, num_timesteps, num_channels = content.shape
     _, num_timesteps_style, _ = style.shape
 
-    # nnf = compute_nnf(content_features, style_features, iterations=50)
-    nnf = compute_nnf_multiscale(content_features, style_features, iterations=48)
+    nnf = compute_nnf(content_features, style_features, iterations=48)
+    # nnf = compute_nnf_multiscale(content_features, style_features, iterations=48)
     # apply the nnf to generate the output audio
     for t in range(num_timesteps):
         s = (t + nnf[t]) % num_timesteps_style
