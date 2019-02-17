@@ -5,7 +5,7 @@ from extern.DeepSpeech.util.flags import FLAGS
 from extern.DeepSpeech.DeepSpeech_inference_hack import do_single_file_inference
 
 def sox_call(fname):
-    subprocess.run("sox {fname} /tmp/input.wav remix 1,2".format(fname=fname).split())
+    subprocess.run(["sox", fname, "/tmp/input.wav", "remix", "1,2"])
 
 def get_feature_array(file_path):
     """ 

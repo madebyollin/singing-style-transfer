@@ -77,8 +77,8 @@ def extract_fundamental_freqs_amps(fundamental_mask, amplitude):
             f_h_min = int((h - 0.5) * fundamental_t)
             f_h_max = int((h + 0.5) * fundamental_t)
             h_slice = amplitude[f_h_min:f_h_max, t]
-            if h_slice.size == 0:
-                break
+            if h_slice.size != (f_h_max - f_h_min) or (h_slice.size == 0):
+                continue
             if h_slice.max() > 0.5 * fundamental_amps[t]:
                 # this harmonic is actually present and reasonably loud
                 # so let's use its pitch information instead
@@ -365,13 +365,13 @@ def compute_nnf_multiscale(content_features, style_features, iterations=16):
         nnf = compute_nnf(content_features_downscaled, style_features_downscaled, iterations_per_scale, seed_nnf=nnf)
     return nnf
 
-def audio_patch_match(content, style, content_freqs, style_freqs, content_features, style_features):
+def audio_patch_match(content, style, content_freqs, style_freqs, content_features, style_features, iterations=48):
     # setup
     output = np.zeros(content.shape)
     num_freqs, num_timesteps, num_channels = content.shape
     _, num_timesteps_style, _ = style.shape
 
-    nnf = compute_nnf(content_features, style_features, iterations=48)
+    nnf = compute_nnf(content_features, style_features, iterations=iterations)
     # nnf = compute_nnf_multiscale(content_features, style_features, iterations=48)
     # apply the nnf to generate the output audio
     for t in range(num_timesteps):
@@ -450,19 +450,19 @@ def stylize(content, style, content_path, style_path):
         style_fundamental_mask, style
     )
     console.timeEnd("fundamental freqs and amps")
-    # Pitch normalization
-    console.time("pitch normalization")
-    content_normalized, _ = normalize_pitch(
-        content, None, content_fundamental_freqs, content_fundamental_amps, base_pitch=32
-    )
-    style_normalized, _ = normalize_pitch(
-        style, None, style_fundamental_freqs, style_fundamental_amps, base_pitch=32
-    )
-    console.timeEnd("pitch normalization")
 
     # Featurization
     use_spectral_features = False
     if use_spectral_features:
+        # Pitch normalization
+        console.time("pitch normalization")
+        content_normalized, _ = normalize_pitch(
+            content, None, content_fundamental_freqs, content_fundamental_amps, base_pitch=32
+        )
+        style_normalized, _ = normalize_pitch(
+            style, None, style_fundamental_freqs, style_fundamental_amps, base_pitch=32
+        )
+        console.timeEnd("pitch normalization")
         # spectral features
         content_features = compute_features(content_normalized)
         style_features = compute_features(style_normalized)
@@ -472,13 +472,13 @@ def stylize(content, style, content_path, style_path):
         # neural features
         content_features = get_feature_array(content_path) / 5
         #console.stats(content_features, "content features")
-        conversion.image_to_file(content_features[:,:,np.newaxis], "content_features.png")
+        # conversion.image_to_file(content_features[:,:,np.newaxis], "content_features.png")
         #console.debug(content.shape, "content.shape")
         content_features = resize(content_features, (2048, content.shape[1]))
         style_features = get_feature_array(style_path) / 5
         #console.stats(style_features, "style features")
         #console.debug(style.shape, "style.shape")
-        conversion.image_to_file(style_features[:,:,np.newaxis], "style_features.png")
+        # conversion.image_to_file(style_features[:,:,np.newaxis], "style_features.png")
         style_features = resize(style_features, (2048, style.shape[1]))
 
     # Patchmatch
@@ -519,9 +519,7 @@ def stylize(content, style, content_path, style_path):
 
 def main(_):
     # REVIEW josephz: This paradigm was copied from inference-hack.py
-
     initialize_globals()
-
 
     sample_dir = "sample"
     # sample_names = ["rolling_in_the_deep", "one_more_time"]
