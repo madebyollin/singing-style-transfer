@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import scipy
 import numpy as np
+import tensorflow as tf
 from scipy.ndimage.morphology import grey_dilation, grey_erosion
 from skimage import measure
 from skimage.transform import resize
@@ -11,6 +12,8 @@ import cv2
 import ipdb
 from ds_feature_extractor import get_feature_array
 import matplotlib.pyplot as plt
+from extern.DeepSpeech.util.config import initialize_globals 
+from extern.DeepSpeech.util.flags import FLAGS, create_flags
 
 
 def draw_harmonic_slice(spectrogram, t, f0, f1, alpha0, alpha1):
@@ -476,7 +479,12 @@ def stylize(content, style, content_path, style_path):
     return stylized
 
 
-def main():
+def main(_):
+    # REVIEW josephz: This paradigm was copied from inference-hack.py
+
+    initialize_globals()
+
+
     sample_dir = "sample"
     # sample_names = ["rolling_in_the_deep", "one_more_time"]
     sample_names = ["rolling_in_the_deep"]
@@ -514,4 +522,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    create_flags()
+    FLAGS.one_shot_infer = "/tmp/input.wav" 
+    FLAGS.checkpoint_dir = "extern/DeepSpeech/deepspeech-0.4.1-checkpoint/" 
+    FLAGS.alphabet_config_path = "extern/DeepSpeech/data/alphabet.txt"
+
+    tf.app.run(main)
+

@@ -34,4 +34,5 @@ fundamental.*
 models/
 data/
 *.jpg
-extern/DeepSpeech/deepspeech-0.4.1-checkpoint
+code/extern/DeepSpeech/deepspeech-0.4.1-checkpoint
+*.tar.*
