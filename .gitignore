@@ -33,6 +33,7 @@ fundamental.*
 # Big stuff
 models/
 data/
+!code/extern/DeepSpeech/data/
 *.jpg
 code/extern/DeepSpeech/deepspeech-0.4.1-checkpoint
 *.tar.*
