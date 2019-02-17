@@ -273,15 +273,26 @@ def compute_features(amplitude):
     return features
 
 
-def compute_nnf(content_features, style_features, iterations=10):
-    _, num_timesteps = content_features.shape
-    _, num_timesteps_style = style_features.shape
-    nnf = (np.random.uniform(low=-1, high=1, size=num_timesteps) * num_timesteps_style).astype(
-        np.int32
-    )
+def compute_nnf(content_features, style_features, iterations=10, seed_nnf=None):
+    num_features_content, num_timesteps = content_features.shape
+    num_features_style, num_timesteps_style = style_features.shape
+    assert num_features_content == num_features_style
+    assert content_features.ndim == 2
+    assert style_features.ndim == 2
+    
+    if seed_nnf is None:
+        nnf = (np.random.uniform(low=-1, high=1, size=num_timesteps) * num_timesteps_style).astype(
+            np.int32
+        )
+    else:
+        assert seed_nnf.ndim == 1
+        assert seed_nnf.shape[0] == num_timesteps
+        nnf = seed_nnf
 
     # distance function
     def distance(content_t, style_t):
+        assert np.issubdtype(type(content_t), int), "type(content_t) is " + str(type(content_t))
+        assert np.issubdtype(type(style_t), int), "type(style_t) is " + str(type(style_t))
         style_t %= num_timesteps_style
         c = content_features[:, content_t]
         s = style_features[:, style_t]
@@ -295,6 +306,7 @@ def compute_nnf(content_features, style_features, iterations=10):
     # https://gfx.cs.princeton.edu/pubs/Barnes_2009_PAR/patchmatch.pdf
     # TODO: iterative supersampling of priors so we don't have to do all this work each iteration
     for _ in range(iterations):
+        total_error = 0
         # iteratively improve the correspondence_field
         for t in range(num_timesteps):
             # propagation
@@ -324,8 +336,27 @@ def compute_nnf(content_features, style_features, iterations=10):
                     best_offset = off
                     best_offset_dist = offset_dist
             nnf[t] = best_offset % num_timesteps_style
+            total_error += best_offset_dist
+    console.info("Computed nnf with average error:", total_error / num_timesteps)
     return nnf
 
+def compute_nnf_multiscale(content_features, style_features, iterations=16):
+    factors = [8, 4, 2, 1]
+    assert factors[-1] == 1 # make sure output nnf is right size
+    iterations_per_scale = max(iterations // len(factors), 1)
+    nnf = None
+    num_features, num_content_timesteps = content_features.shape
+    num_features, num_style_timesteps = style_features.shape
+    for downscale_factor in factors:
+        content_shape_downscaled = (num_features, num_content_timesteps // downscale_factor)
+        if nnf is not None:
+            # make the nnf into an image-shaped thingy and then undo it after performing scaling
+            nnf = resize(nnf[:,np.newaxis, np.newaxis], (num_content_timesteps // downscale_factor,1))[:,0,0].astype(np.int64)
+        content_features_downscaled = resize(content_features, content_shape_downscaled) 
+        style_features_downscaled = resize(style_features, (num_features, num_style_timesteps // downscale_factor)) 
+        console.debug("shape of downscaled content features is", content_features_downscaled.shape)
+        nnf = compute_nnf(content_features_downscaled, style_features_downscaled, iterations_per_scale, seed_nnf=nnf)
+    return nnf
 
 def audio_patch_match(content, style, content_freqs, style_freqs, content_features, style_features):
     # setup
@@ -333,8 +364,8 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
     num_freqs, num_timesteps, num_channels = content.shape
     _, num_timesteps_style, _ = style.shape
 
-    nnf = compute_nnf(content_features, style_features, iterations=50)
-    # np.save("/Users/ollin/Desktop/optimal_nnf.npy", nnf)
+    # nnf = compute_nnf(content_features, style_features, iterations=50)
+    nnf = compute_nnf_multiscale(content_features, style_features, iterations=48)
     # apply the nnf to generate the output audio
     for t in range(num_timesteps):
         s = (t + nnf[t]) % num_timesteps_style
