@@ -61,7 +61,7 @@ def extract_fundamental_freqs_amps(fundamental_mask, amplitude):
     denominators = np.sum(fundamental_cropped, axis=0)
     fundamental_amps = denominators[:] / np.max(denominators)
     fundamental_weighted = coefficients[:, np.newaxis] * fundamental_cropped
-    console.stats(fundamental_weighted)
+    #console.stats(fundamental_weighted)
     # and compute it for every timestep
     for t in range(fundamental_mask.shape[1]):
         if denominators[t] == 0:
@@ -208,7 +208,7 @@ def extract_fundamental(amplitude):
     peak_finder = np.array([-0.5, -0.5, 2, -0.5, -0.5])[:, np.newaxis].T
     console.time("big loop")
     freqs = np.argmax(np.mean(amplitude[:50], axis=2), axis=0)
-    console.stats(freqs)
+    # console.stats(freqs)
     for t in range(amplitude.shape[1]):
         f = freqs[t]
         # handle case where 2nd harmonic > first
@@ -291,8 +291,8 @@ def compute_nnf(content_features, style_features, iterations=10, seed_nnf=None):
 
     # distance function
     def distance(content_t, style_t):
-        assert np.issubdtype(type(content_t), int), "type(content_t) is " + str(type(content_t))
-        assert np.issubdtype(type(style_t), int), "type(style_t) is " + str(type(style_t))
+        #assert np.issubdtype(type(content_t), int), "type(content_t) is " + str(type(content_t))
+        #assert np.issubdtype(type(style_t), int), "type(style_t) is " + str(type(style_t))
         style_t %= num_timesteps_style
         c = content_features[:, content_t]
         s = style_features[:, style_t]
@@ -337,24 +337,31 @@ def compute_nnf(content_features, style_features, iterations=10, seed_nnf=None):
                     best_offset_dist = offset_dist
             nnf[t] = best_offset % num_timesteps_style
             total_error += best_offset_dist
-    console.info("Computed nnf with average error:", total_error / num_timesteps)
+    console.info(iterations, "\tComputed nnf with average error:", total_error / num_timesteps)
     return nnf
 
 def compute_nnf_multiscale(content_features, style_features, iterations=16):
+    console.h1(iterations, "Starting multi-scale pass")
     factors = [8, 4, 2, 1]
     assert factors[-1] == 1 # make sure output nnf is right size
     iterations_per_scale = max(iterations // len(factors), 1)
     nnf = None
     num_features, num_content_timesteps = content_features.shape
     num_features, num_style_timesteps = style_features.shape
-    for downscale_factor in factors:
+    for d, downscale_factor in enumerate(factors):
         content_shape_downscaled = (num_features, num_content_timesteps // downscale_factor)
         if nnf is not None:
             # make the nnf into an image-shaped thingy and then undo it after performing scaling
-            nnf = resize(nnf[:,np.newaxis, np.newaxis], (num_content_timesteps // downscale_factor,1))[:,0,0].astype(np.int64)
+            old_style_max = num_style_timesteps // factors[d-1]
+            new_style_max = num_style_timesteps // downscale_factor
+            # since offsets are in absolute coordinates for now
+            # (sigh) you need to scale the nnf values
+            # each time you resize the nnf
+            # for the *relative* nnf vectors to be preserved
+            nnf = (resize(nnf[:,np.newaxis, np.newaxis] / old_style_max, (num_content_timesteps // downscale_factor,1))[:,0,0] * new_style_max).astype(np.int64)
         content_features_downscaled = resize(content_features, content_shape_downscaled) 
         style_features_downscaled = resize(style_features, (num_features, num_style_timesteps // downscale_factor)) 
-        console.debug("shape of downscaled content features is", content_features_downscaled.shape)
+        # console.debug("shape of downscaled content features is", content_features_downscaled.shape)
         nnf = compute_nnf(content_features_downscaled, style_features_downscaled, iterations_per_scale, seed_nnf=nnf)
     return nnf
 
@@ -364,7 +371,7 @@ def audio_patch_match(content, style, content_freqs, style_freqs, content_featur
     num_freqs, num_timesteps, num_channels = content.shape
     _, num_timesteps_style, _ = style.shape
 
-    nnf = compute_nnf(content_features, style_features, iterations=24)
+    nnf = compute_nnf(content_features, style_features, iterations=48)
     # nnf = compute_nnf_multiscale(content_features, style_features, iterations=48)
     # apply the nnf to generate the output audio
     for t in range(num_timesteps):
@@ -464,13 +471,13 @@ def stylize(content, style, content_path, style_path):
     if not use_spectral_features:
         # neural features
         content_features = get_feature_array(content_path) / 5
-        console.stats(content_features, "content features")
+        #console.stats(content_features, "content features")
         conversion.image_to_file(content_features[:,:,np.newaxis], "content_features.png")
-        console.debug(content.shape, "content.shape")
+        #console.debug(content.shape, "content.shape")
         content_features = resize(content_features, (2048, content.shape[1]))
         style_features = get_feature_array(style_path) / 5
-        console.stats(style_features, "style features")
-        console.debug(style.shape, "style.shape")
+        #console.stats(style_features, "style features")
+        #console.debug(style.shape, "style.shape")
         conversion.image_to_file(style_features[:,:,np.newaxis], "style_features.png")
         style_features = resize(style_features, (2048, style.shape[1]))
 
