@@ -141,6 +141,9 @@ class PostProcessor:
         denoised = self.predict(noisy)
         conversion.image_to_file(denoised, file_path + ".denoised.png")
 
+    def predict(self, amplitude, harmonics, sibilants):
+        return self.predict(np.dstack(amplitude, harmonics, sibilants))
+
     def predict(self, x):
         padded_x = preprocess_x(x)
         x_with_batch = np.expand_dims(padded_x, 0)

@@ -14,6 +14,7 @@ from ds_feature_extractor import get_feature_array
 import matplotlib.pyplot as plt
 from extern.DeepSpeech.util.config import initialize_globals 
 from extern.DeepSpeech.util.flags import FLAGS, create_flags
+from post_processor import PostProcessor
 
 
 def draw_harmonic_slice(spectrogram, t, f0, f1, alpha0, alpha1):
@@ -435,7 +436,7 @@ def audio_patch_rescale(
     return output
 
 
-def stylize(content, style, content_path, style_path):
+def stylize(content, style, content_path, style_path, post_processor):
     stylized = content
     # Pitch fundamental extraction
     console.time("extracting fundamentals")
@@ -481,18 +482,19 @@ def stylize(content, style, content_path, style_path):
         # conversion.image_to_file(style_features[:,:,np.newaxis], "style_features.png")
         style_features = resize(style_features, (2048, style.shape[1]))
 
+    # Harmonic recovery
+    content_harmonics = fundamental_to_harmonics(
+        content_fundamental_freqs, content_fundamental_amps, content
+    )
+    content_harmonics = grey_dilation(content_harmonics, size=3)
+    content_harmonics *= content.max() / content_harmonics.max()
+    # Sibilant recovery
+    content_sibilants = get_sibilants(content, content_fundamental_amps)
+    content_sibilants *= content.max() / content_sibilants.max()
+
     # Patchmatch
     console.time("patch match")
     if False:
-        # Harmonic recovery
-        content_harmonics = fundamental_to_harmonics(
-            content_fundamental_freqs, content_fundamental_amps, content
-        )
-        content_harmonics = grey_dilation(content_harmonics, size=3)
-        content_harmonics *= content.max() / content_harmonics.max()
-        # Sibilant recovery
-        content_sibilants = get_sibilants(content, content_fundamental_amps)
-        content_sibilants *= content.max() / content_sibilants.max()
         stylized = audio_patch_rescale(
             content,
             style,
@@ -513,6 +515,7 @@ def stylize(content, style, content_path, style_path):
             style_features,
         )
     console.timeEnd("patch match")
+    stylized = post_processor.predict(amplitude=stylized, harmonics=np.mean(content_harmonics, axis=2), sibilants=np.mean(content_sibilants, axis=2))
     # stylized = global_eq_match(stylized, style)
     return stylized
 
@@ -524,6 +527,8 @@ def main(_):
     sample_dir = "sample"
     # sample_names = ["rolling_in_the_deep", "one_more_time"]
     sample_names = ["rolling_in_the_deep"]
+    post_processor = PostProcessor()
+    post_processor.load_weights("weights.h5")
     # sample_names = ["perfect_features"]
     # sample_names = ["rolling_in_the_one_more_time"]
     for sample_name in sample_names:
@@ -545,7 +550,8 @@ def main(_):
         content_img, content_phase = conversion.audio_to_spectrogram(
             content_audio, fft_window_size=1536
         )
-        stylized_img = stylize(content_img, style_img, content_path, style_path)
+        stylized_img = stylize(content_img, style_img, content_path, style_path, post_processor)
+
         stylized_audio = conversion.amplitude_to_audio(
             stylized_img, fft_window_size=1536, phase_iterations=1, phase=content_phase
         )

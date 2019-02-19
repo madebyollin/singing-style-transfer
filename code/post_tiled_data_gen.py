@@ -35,7 +35,7 @@ class DataGenerator(keras.utils.Sequence):
         np.random.shuffle(self.pairs)
 
     def __len__(self):
-        return 16
+        return 64
 
     def __getitem__(self, index):
         max_index = int(np.floor(len(self.pairs) / self.batch_size))
