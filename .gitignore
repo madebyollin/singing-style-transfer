@@ -38,3 +38,4 @@ data/
 code/extern/DeepSpeech/deepspeech-0.4.1-checkpoint
 *.tar.*
 *.h5
+!weights.h5
