@@ -1,4 +1,12 @@
 #!/usr/bin/env python
+"""
+Generates spectrogram dataset for the post-processing network.
+
+:returns
+    - x: Noisy spectrogram
+    - y: Reference Spectrogram
+
+"""
 import os
 import numpy as np
 import tensorflow as tf
