@@ -19,6 +19,9 @@ class DataGenerator(keras.utils.Sequence):
             if file_name.endswith("npy"):
                 source = np.load(self.in_path + "/x/" + file_name)
                 target = np.load(self.in_path + "/y/" + file_name)
+                coord_conv_slice = np.linspace(0, 1, source.shape[0])[:,np.newaxis]
+                coord_conv_channel = np.repeat(coord_conv_slice, source.shape[1], axis=1)
+                source = np.dstack([source, coord_conv_channel])
                 num_freqs, num_timesteps, num_channels = source.shape
                 for f_tile in range(num_freqs // tile_size):
                     for t_tile in range(num_timesteps // tile_size):

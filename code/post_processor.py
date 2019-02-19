@@ -89,7 +89,7 @@ class PostProcessor:
             return base_conv(num_filters, (4, 1), strides=(2, 1))
 
         # input
-        noisy = Input(shape=(None, None, 3), name="noisy")
+        noisy = Input(shape=(None, None, 4), name="noisy")
         conv = BatchNormalization()(noisy) # lazy
 
         # downsampling
