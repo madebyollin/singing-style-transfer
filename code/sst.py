@@ -456,19 +456,19 @@ def stylize(content, style, content_path, style_path, post_processor):
     use_spectral_features = False
     if use_spectral_features:
         # Pitch normalization
-        console.time("pitch normalization")
-        content_normalized, _ = normalize_pitch(
-            content, None, content_fundamental_freqs, content_fundamental_amps, base_pitch=32
-        )
-        style_normalized, _ = normalize_pitch(
-            style, None, style_fundamental_freqs, style_fundamental_amps, base_pitch=32
-        )
-        console.timeEnd("pitch normalization")
-        # spectral features
-        content_features = compute_features(content_normalized)
-        style_features = compute_features(style_normalized)
-        # content_features = compute_features(content)
-        # style_features = compute_features(style)
+        # console.time("pitch normalization")
+  #       content_normalized, _ = normalize_pitch(
+  #           content, None, content_fundamental_freqs, content_fundamental_amps, base_pitch=32
+  #       )
+  #       style_normalized, _ = normalize_pitch(
+  #           style, None, style_fundamental_freqs, style_fundamental_amps, base_pitch=32
+  #       )
+  #       console.timeEnd("pitch normalization")
+  #       # spectral features
+  #       content_features = compute_features(content_normalized)
+  #       style_features = compute_features(style_normalized)
+        content_features = compute_features(content)
+        style_features = compute_features(style)
     if not use_spectral_features:
         # neural features
         content_features = get_feature_array(content_path) / 5
@@ -513,9 +513,13 @@ def stylize(content, style, content_path, style_path, post_processor):
             style_fundamental_freqs,
             content_features,
             style_features,
+            iterations=16
         )
     console.timeEnd("patch match")
-    stylized = post_processor.predict(amplitude=stylized, harmonics=np.mean(content_harmonics, axis=2), sibilants=np.mean(content_sibilants, axis=2))
+    console.log("normal stylized has shape", stylized.shape)
+    # ipdb.set_trace()
+    stylized = post_processor.predict_unstacked(amplitude=np.mean(stylized, axis=2), harmonics=np.mean(content_harmonics, axis=2), sibilants=np.mean(content_sibilants, axis=2))
+    stylized = np.dstack([stylized, stylized]) # TODO: actually run the network on both channels instead of doing this
     # stylized = global_eq_match(stylized, style)
     return stylized
 
@@ -552,6 +556,7 @@ def main(_):
         )
         stylized_img = stylize(content_img, style_img, content_path, style_path, post_processor)
 
+        console.log("size of stylized_img is", stylized_img.shape, "size of content phase is", content_phase.shape)
         stylized_audio = conversion.amplitude_to_audio(
             stylized_img, fft_window_size=1536, phase_iterations=1, phase=content_phase
         )

@@ -141,14 +141,15 @@ class PostProcessor:
         denoised = self.predict(noisy)
         conversion.image_to_file(denoised, file_path + ".denoised.png")
 
-    def predict(self, amplitude, harmonics, sibilants):
-        return self.predict(np.dstack(amplitude, harmonics, sibilants))
+    def predict_unstacked(self, amplitude, harmonics, sibilants):
+        return self.predict(np.dstack([amplitude, harmonics, sibilants]))
 
     def predict(self, x):
         padded_x = preprocess_x(x)
         x_with_batch = np.expand_dims(padded_x, 0)
         predicted_y_with_batch = self.model.predict(x_with_batch)
         predicted_y = predicted_y_with_batch[0]
+        console.log("predicted_y produced output of shape", predicted_y.shape)
         y = postprocess_y(predicted_y, x.shape)
         return y
 
@@ -169,7 +170,7 @@ def postprocess_y(y, target_shape):
     # fix shape
     output = np.zeros(target_shape)
     output[: y.shape[0], :, :] = y[:, : target_shape[1], :]
-    return output
+    return output[:,:,:1]
 
 
 def main():
