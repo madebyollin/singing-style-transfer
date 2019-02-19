@@ -6,7 +6,7 @@ import keras
 import console
 
 class DataGenerator(keras.utils.Sequence):
-    def __init__(self, tile_size=64, in_path="/Users/ollin/Desktop/processed", batch_size=16):
+    def __init__(self, in_path="/Users/ollin/Desktop/train", batch_size=16, tile_size=64):
         self.in_path = in_path
         self.tile_size = tile_size
         self.batch_size = batch_size
@@ -25,13 +25,17 @@ class DataGenerator(keras.utils.Sequence):
                         s = np.s_[f_tile * tile_size:f_tile * tile_size + tile_size, 
                                   t_tile * tile_size:t_tile * tile_size + tile_size]
                         x = source[s]
-                        y = target[s]
+                        y = target[s][:,:,np.newaxis]
                         self.pairs.append([x, y])
         np.random.shuffle(self.pairs)
         console.log("Loaded", len(self.pairs), "pairs")
+        console.log("Shape of first pair is", self.pairs[0][0].shape, self.pairs[0][1].shape)
+    
+    def on_epoch_end(self):
+        np.random.shuffle(self.pairs)
 
     def __len__(self):
-        return 512
+        return 16
 
     def __getitem__(self, index):
         max_index = int(np.floor(len(self.pairs) / self.batch_size))
