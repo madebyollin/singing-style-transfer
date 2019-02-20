@@ -556,16 +556,21 @@ def main(_):
             content_audio, fft_window_size=1536
         )
         stylized_img_raw, stylized_img = stylize(content_img, style_img, content_path, style_path, post_processor)
-        conversion.image_to_file(stylized_img_raw, stylized_img_raw_path)
 
-        console.log("size of stylized_img is", stylized_img.shape, "size of content phase is", content_phase.shape)
+        # Save raw stylized spectrogram and audio.
+        stylized_audio = conversion.amplitude_to_audio(
+            stylized_img_raw, fft_window_size=1536, phase_iterations=1, phase=content_phase
+        )
+        conversion.image_to_file(stylized_img_raw, stylized_img_raw_path)
+        conversion.audio_to_file(stylized_audio, stylized_audio_path)
+
+        # Save post-processed stylized spectrogram and audio.
         stylized_audio = conversion.amplitude_to_audio(
             stylized_img, fft_window_size=1536, phase_iterations=1, phase=content_phase
         )
-
-        # Save stylized spectrogram and audio.
         conversion.image_to_file(stylized_img, stylized_img_path)
         conversion.audio_to_file(stylized_audio, stylized_audio_path)
+
         console.timeEnd("total processing for " + sample_name)
         console.info("Finished processing %s; saved to %s" % (sample_name, stylized_audio_path))
 
