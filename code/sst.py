@@ -518,10 +518,10 @@ def stylize(content, style, content_path, style_path, post_processor):
     console.timeEnd("patch match")
     console.log("normal stylized has shape", stylized.shape)
     # ipdb.set_trace()
-    stylized = post_processor.predict_unstacked(amplitude=np.mean(stylized, axis=2), harmonics=np.mean(content_harmonics, axis=2), sibilants=np.mean(content_sibilants, axis=2))
-    stylized = np.dstack([stylized, stylized]) # TODO: actually run the network on both channels instead of doing this
+    stylized_post_processed = post_processor.predict_unstacked(amplitude=np.mean(stylized, axis=2), harmonics=np.mean(content_harmonics, axis=2), sibilants=np.mean(content_sibilants, axis=2))
+    stylized_post_processed = np.dstack([stylized_post_processed, stylized_post_processed]) # TODO: actually run the network on both channels instead of doing this
     # stylized = global_eq_match(stylized, style)
-    return stylized
+    return stylized, stylized_post_processed
 
 
 def main(_):
@@ -543,6 +543,7 @@ def main(_):
         style_path = sample_path + "/style.mp3"
         content_path = sample_path + "/content.mp3"
         stylized_img_path = sample_path + "/stylized.png"
+        stylized_img_raw_path = sample_path + "/stylized_raw.png"
         stylized_audio_path = sample_path + "/stylized.mp3"
 
         # Read style audio to spectrograms.
@@ -554,7 +555,8 @@ def main(_):
         content_img, content_phase = conversion.audio_to_spectrogram(
             content_audio, fft_window_size=1536
         )
-        stylized_img = stylize(content_img, style_img, content_path, style_path, post_processor)
+        stylized_img_raw, stylized_img = stylize(content_img, style_img, content_path, style_path, post_processor)
+        conversion.image_to_file(stylized_img_raw, stylized_img_raw_path)
 
         console.log("size of stylized_img is", stylized_img.shape, "size of content phase is", content_phase.shape)
         stylized_audio = conversion.amplitude_to_audio(
