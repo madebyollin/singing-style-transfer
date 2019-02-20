@@ -29,7 +29,7 @@ class PostProcessor:
         self.name = name or "PostProcessor"
 
     def compile_network(self):
-        optimizer = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0001)
+        optimizer = Adam(lr=3e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0001)
         self.model.compile(loss="mean_absolute_error", optimizer=optimizer)
 
     def train(self, train, epochs, validation_data=None, test_file=None):
@@ -59,13 +59,11 @@ class PostProcessor:
 
     def build_network(self):
         num_filters_dict = {
-            "d0": 32,
-            "d1": 32,
-            "pool_freq": 16,
-            "pool_time": 16,
-            "u0": 32,
-            "u1": 32,
-            "u2": 16,
+            "d0": 128,
+            "d1": 128,
+            "u0": 128,
+            "u1": 128,
+            "u2": 128,
             "output": 1,
         }
 
@@ -95,16 +93,16 @@ class PostProcessor:
         # downsampling
         skip_a = conv
         conv = static_conv(num_filters_dict["d0"])(conv)
-        # conv = Dropout(0.75)(conv)
+        #conv = Dropout(0.5)(conv)
         conv = static_conv(num_filters_dict["d0"])(conv)
-        # conv = Dropout(0.75)(conv)
+        #conv = Dropout(0.5)(conv)
         conv = BatchNormalization()(downsample_conv(num_filters_dict["d0"])(conv))
 
         skip_b = conv
         conv = static_conv(num_filters_dict["d1"])(conv)
-        # conv = Dropout(0.5)(conv)
+        #conv = Dropout(0.5)(conv)
         conv = static_conv(num_filters_dict["d1"])(conv)
-        # conv = Dropout(0.5)(conv)
+        #conv = Dropout(0.5)(conv)
         conv = BatchNormalization()(downsample_conv(num_filters_dict["d1"])(conv))
 
         # processing at 1/4x resolution
