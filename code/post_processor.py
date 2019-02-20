@@ -29,7 +29,7 @@ class PostProcessor:
         self.name = name or "PostProcessor"
 
     def compile_network(self):
-        optimizer = Adam(lr=3e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0001)
+        optimizer = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0001)
         self.model.compile(loss="mean_absolute_error", optimizer=optimizer)
 
     def train(self, train, epochs, validation_data=None, test_file=None):
@@ -59,11 +59,11 @@ class PostProcessor:
 
     def build_network(self):
         num_filters_dict = {
-            "d0": 128,
-            "d1": 128,
-            "u0": 128,
-            "u1": 128,
-            "u2": 128,
+            "d0": 32,
+            "d1": 32,
+            "u0": 32,
+            "u1": 32,
+            "u2": 32,
             "output": 1,
         }
 
