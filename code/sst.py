@@ -328,9 +328,9 @@ def compute_nnf(content_features, style_features, iterations=10, seed_nnf=None):
                 s = t + off
                 # penalize changing style source-regions in the middle of a loud part of the content
                 # probably shouldn't be necessary
-                # consistency_penalty = (
-                #     np.max(content_features[:, t]) * abs(nnf[t - 1] - off) / num_timesteps_style
-                # )
+                #consistency_penalty = (
+                #    np.max(content_features[:, t]) * abs(nnf[t - 1] - off) / num_timesteps_style
+                #)
                 consistency_penalty = 0
                 offset_dist = distance(t, s) + consistency_penalty
                 if best_offset is None or offset_dist < best_offset_dist:
@@ -513,7 +513,7 @@ def stylize(content, style, content_path, style_path, post_processor):
             style_fundamental_freqs,
             content_features,
             style_features,
-            iterations=16
+            iterations=48
         )
     console.timeEnd("patch match")
     console.log("normal stylized has shape", stylized.shape)
@@ -529,8 +529,8 @@ def main(_):
     initialize_globals()
 
     sample_dir = "sample"
-    # sample_names = ["rolling_in_the_deep", "one_more_time"]
-    sample_names = ["rolling_in_the_deep"]
+    sample_names = ["new_test"]
+    # sample_names = ["rolling_in_the_deep"]
     post_processor = PostProcessor()
     post_processor.load_weights("weights.h5")
     # sample_names = ["perfect_features"]
@@ -545,6 +545,7 @@ def main(_):
         stylized_img_path = sample_path + "/stylized.png"
         stylized_img_raw_path = sample_path + "/stylized_raw.png"
         stylized_audio_path = sample_path + "/stylized.mp3"
+        stylized_audio_raw_path = sample_path + "/stylized_raw.mp3"
 
         # Read style audio to spectrograms.
         style_audio, style_sample_rate = conversion.file_to_audio(style_path)
@@ -562,7 +563,7 @@ def main(_):
             stylized_img_raw, fft_window_size=1536, phase_iterations=1, phase=content_phase
         )
         conversion.image_to_file(stylized_img_raw, stylized_img_raw_path)
-        conversion.audio_to_file(stylized_audio, stylized_audio_path)
+        conversion.audio_to_file(stylized_audio, stylized_audio_raw_path)
 
         # Save post-processed stylized spectrogram and audio.
         stylized_audio = conversion.amplitude_to_audio(
