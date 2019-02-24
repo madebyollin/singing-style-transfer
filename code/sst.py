@@ -252,7 +252,7 @@ def global_eq_match(content, style):
     style_mean_freq = gf(np.mean(style, axis=(1, 2)))
 
     weights = style_mean_freq / content_mean_freq
-    weights = np.clip(weights, 0, 2)
+    weights = np.clip(weights, 0, 5)
     stylized = weights[:, np.newaxis, np.newaxis] * content
     stylized *= content.max() / stylized.max()
 
@@ -436,7 +436,7 @@ def audio_patch_rescale(
     return output
 
 
-def stylize(content, style, content_path, style_path, post_processor):
+def stylize(content, style, content_phase, style_phase, content_path, style_path, post_processor):
     stylized = content
     # Pitch fundamental extraction
     console.time("extracting fundamentals")
@@ -452,21 +452,28 @@ def stylize(content, style, content_path, style_path, post_processor):
     )
     console.timeEnd("fundamental freqs and amps")
 
+    if True:
+        console.time("pitch normalization")
+        content_normalized, content_normalized_phase = normalize_pitch(
+         content, content_phase, content_fundamental_freqs, content_fundamental_amps, base_pitch=32
+        )
+        style_normalized, style_normalized_phase = normalize_pitch(
+         style, style_phase, style_fundamental_freqs, style_fundamental_amps, base_pitch=32
+        )
+        content_normalized_path = content_path + ".normalized.mp3"
+        content_normalized_audio = conversion.amplitude_to_audio(content_normalized, fft_window_size=1536, phase_iterations=1, phase=content_normalized_phase)
+        conversion.audio_to_file(content_normalized_audio, content_normalized_path)
+
+        style_normalized_path = style_path + ".normalized.mp3"
+        style_normalized_audio = conversion.amplitude_to_audio(style_normalized, fft_window_size=1536, phase_iterations=1, phase=style_normalized_phase)
+        conversion.audio_to_file(style_normalized_audio, style_normalized_path)
+
+        console.timeEnd("pitch normalization")
+
     # Featurization
     use_spectral_features = False
     if use_spectral_features:
         # Pitch normalization
-        # console.time("pitch normalization")
-  #       content_normalized, _ = normalize_pitch(
-  #           content, None, content_fundamental_freqs, content_fundamental_amps, base_pitch=32
-  #       )
-  #       style_normalized, _ = normalize_pitch(
-  #           style, None, style_fundamental_freqs, style_fundamental_amps, base_pitch=32
-  #       )
-  #       console.timeEnd("pitch normalization")
-  #       # spectral features
-  #       content_features = compute_features(content_normalized)
-  #       style_features = compute_features(style_normalized)
         content_features = compute_features(content)
         style_features = compute_features(style)
     if not use_spectral_features:
@@ -520,7 +527,7 @@ def stylize(content, style, content_path, style_path, post_processor):
     # ipdb.set_trace()
     stylized_post_processed = post_processor.predict_unstacked(amplitude=np.mean(stylized, axis=2), harmonics=np.mean(content_harmonics, axis=2), sibilants=np.mean(content_sibilants, axis=2))
     stylized_post_processed = np.dstack([stylized_post_processed, stylized_post_processed]) # TODO: actually run the network on both channels instead of doing this
-    # stylized = global_eq_match(stylized, style)
+    stylized_post_processed = global_eq_match(stylized_post_processed, style)
     return stylized, stylized_post_processed
 
 
@@ -529,8 +536,8 @@ def main(_):
     initialize_globals()
 
     sample_dir = "sample"
-    sample_names = ["new_test"]
-    # sample_names = ["rolling_in_the_deep"]
+    # sample_names = ["new_test"]
+    sample_names = ["rolling_in_the_deep"]
     post_processor = PostProcessor()
     post_processor.load_weights("weights.h5")
     # sample_names = ["perfect_features"]
@@ -556,19 +563,21 @@ def main(_):
         content_img, content_phase = conversion.audio_to_spectrogram(
             content_audio, fft_window_size=1536
         )
-        stylized_img_raw, stylized_img = stylize(content_img, style_img, content_path, style_path, post_processor)
+        stylized_img_raw, stylized_img = stylize(content_img, style_img, content_phase, style_phase, content_path, style_path, post_processor)
 
         # Save raw stylized spectrogram and audio.
-        stylized_audio = conversion.amplitude_to_audio(
-            stylized_img_raw, fft_window_size=1536, phase_iterations=1, phase=content_phase
+        stylized_audio_raw = conversion.amplitude_to_audio(
+            stylized_img_raw, fft_window_size=1536, phase_iterations=15, phase=content_phase
         )
         conversion.image_to_file(stylized_img_raw, stylized_img_raw_path)
-        conversion.audio_to_file(stylized_audio, stylized_audio_raw_path)
+        conversion.audio_to_file(stylized_audio_raw, stylized_audio_raw_path)
 
         # Save post-processed stylized spectrogram and audio.
         stylized_audio = conversion.amplitude_to_audio(
-            stylized_img, fft_window_size=1536, phase_iterations=1, phase=content_phase
+            stylized_img, fft_window_size=1536, phase_iterations=15, phase=content_phase
         )
+        # np.save("stylized_img.npy", stylized_img)
+        # np.save("content_phase.npy", content_phase)
         conversion.image_to_file(stylized_img, stylized_img_path)
         conversion.audio_to_file(stylized_audio, stylized_audio_path)
 
