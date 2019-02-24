@@ -17,6 +17,7 @@ share/
 # Audio/Spectrograms
 *.wav
 *.mp3*.mp3
+sample/*/*.mp3
 *.png
 code/sample/stylized.*
 code/reference_stylized.png
