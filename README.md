@@ -7,7 +7,7 @@
         - [x] **[andrew / joseph]** Clean up DeepSpeech feature-retrieval code to be faster and less hacky (shouldn't need to write to temp files, shouldn't need to have python calling a shell script calling python, should ideally be able to batch multiple inputs)
         - [x] **[ollin]** Implement multi-scale refinement for PatchMatch and see if it makes stuff work better.
         - [ ] **[ollin]** Make PatchMatch faster if possible, right now it takes too long with high iteration counts (~20).
-        - [ ] **[??]** Test if using pitch-normalized inputs improves DS feature matching results, and, if so, switch to doing that.
+        - [x] **[??]** Test if using pitch-normalized inputs improves DS feature matching results, and, if so, switch to doing that. **EDIT:** It doesn't seem to substantially improve it, although it also doesn't hurt–it's hard to say conclusively.
     - [ ] **[All]** Implement initial draft of post-processing networks (see [notes/post_processing_net.md](notes/post_processing_net.md) in the repo)
         - [x] **[josephz/andrew]** Implement model architecture in Keras.
             - Assume that the data is already in `x/0001.npy`, `y/0001.npy`
@@ -15,13 +15,13 @@
             - For now, you can just load the data from images for our one example, and make sure it can overfit.
                 - [ ] **[josephz/andrew]**: Overfit to our `rolling_in_the_deep.mp3` song
         - [x] **[ollin]** Implement training data generator, saves `x/0001.npy` spectrogram and `y/0001.npy` to numpy files.
-            - [ ] Make two versions: one pre-tiled, the other not
+            - [??] Make two versions: one pre-tiled, the other not
                 - The idea is to make it such that the non-tiled emulates our end to end pipeline
-    - [ ] **[??]** Test the primary source of PatchMatch error by comparing the MSE in feature space between our PatchMatch reconstruction and an n^2 nearest-neighbor search.
-        - [ ] **If n^2 search is better (low prior):** If the conclusion is that PatchMatch can't _find_ good patches, because of lack of continuity in the feature vectors, we may need to switch to a lookup-based approach (e.g. kd trees), hybrid approach (splitting the style image into consonant and vowel sub-components and only searching in the correct one), cheat by blurring the feature vectors along the time axis, or just run PatchMatch with higher iteration counts.
-        - [ ] **If both are equal (high prior):** then we need to determine if the issue is that our features are bad, or that good matches don't exist. We can do this by comparing the results of PatchMatch using the actual style (which doesn't necessarily have good matches) and the "reference_stylized" as the style (which necessarily has good matches for everything).
-            - [ ] **If PatchMatch with reference_stylized is way better (low prior):** then the conclusion is that *good patches don't exist* (because the style audio does not necessarily contain all of the necessary consonant / vowel sounds), and we need to figure out how to resynthesize them and add this to the search.
-            - [ ] **If both are equal (high prior):**  then the conclusion is that both the harmonic features and the DeepSpeech features are garbage for matching, and PatchMatch on them is doomed, test alternate featurizers https://github.com/fordDeepDSP/DeepSpeech/issues/13 e.g. https://drive.google.com/file/d/1E65g4HlQU666RhgY712Sn6FuU2wvZTnQ/view or just pray that post-processing can save us.
+    - [x] **[??]** Test the primary source of PatchMatch error by comparing the MSE in feature space between our PatchMatch reconstruction and an n^2 nearest-neighbor search. **EDIT:** based on testing with higher iteration counts, I think feature quality is the main issue.
+    - [ ] **Test Neural Net Improvements:**
+        - [ ] Switch to better architecture and training methods.
+    - [ ] **Test alternate featurizer:**
+        - [ ] The one in https://github.com/andabi/deep-voice-conversion looks good
 - **Week 7-9:**
     - **Best-case:** work on the demo, make a pretty web interface, speedup
     - **Worst-case:** focus on dataset, and do a more rigorous comparison of existing methods, including notes for how they can be improved.
