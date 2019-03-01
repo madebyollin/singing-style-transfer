@@ -18,10 +18,15 @@
             - [??] Make two versions: one pre-tiled, the other not
                 - The idea is to make it such that the non-tiled emulates our end to end pipeline
     - [x] **[??]** Test the primary source of PatchMatch error by comparing the MSE in feature space between our PatchMatch reconstruction and an n^2 nearest-neighbor search. **EDIT:** based on testing with higher iteration counts, I think feature quality is the main issue.
-    - [ ] **Test Neural Net Improvements:**
-        - [ ] Switch to better architecture and training methods.
+    - [ ] **Test Neural Net Improvements:** this is all in `post_processor.py` and you run it with `train.sh`
+        - [ ] Try a deeper network (more downscaling) - low tier difficulty
+        - [ ] Make the network train faster or be not bad
+        - [ ] Add in style images somehow - possibly with a separate encoder - but this requires modifying the data generator slightly. - mid tier difficulty
     - [ ] **Test alternate featurizer:**
         - [ ] The one in https://github.com/andabi/deep-voice-conversion looks good
+        - [x] Installlllllll itttttt
+        - [ ] Actually write the code to use it for featurization!
+        - [ ] Compare results with DeepSpeech results.
 - **Week 7-9:**
     - **Best-case:** work on the demo, make a pretty web interface, speedup
     - **Worst-case:** focus on dataset, and do a more rigorous comparison of existing methods, including notes for how they can be improved.
