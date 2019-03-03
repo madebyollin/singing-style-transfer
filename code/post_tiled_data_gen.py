@@ -11,6 +11,7 @@ class DataGenerator(keras.utils.Sequence):
         self.tile_size = tile_size
         self.batch_size = batch_size
         self.pairs = []
+        self.style_inputs = {}
         self.load()
 
     def load(self):
@@ -20,6 +21,7 @@ class DataGenerator(keras.utils.Sequence):
                 source = np.load(self.in_path + "/x/" + file_name)
                 target = np.load(self.in_path + "/y/" + file_name)
                 style_input = np.load(self.in_path + "/style/" + file_name)
+                style_inputs[file_name] = style_input
                 coord_conv_slice = np.linspace(0, 1, source.shape[0])[:,np.newaxis]
                 coord_conv_channel = np.repeat(coord_conv_slice, source.shape[1], axis=1)
                 source = np.dstack([source, coord_conv_channel])
@@ -30,8 +32,7 @@ class DataGenerator(keras.utils.Sequence):
                                   t_tile * tile_size:t_tile * tile_size + tile_size]
                         x = source[s]
                         y = target[s][:,:,np.newaxis]
-                        style = style_input[s][:,:,np.newaxis]
-                        self.pairs.append([x, y, style_input])
+                        self.pairs.append([x, file_name, y])
         np.random.shuffle(self.pairs)
         console.log("Loaded", len(self.pairs), "pairs")
         console.log("Shape of first pair is", self.pairs[0][0].shape, self.pairs[0][1].shape, self.pairs[0][2].shape)
@@ -48,10 +49,10 @@ class DataGenerator(keras.utils.Sequence):
         x = []
         y = []
         for b in range(self.batch_size):
-            x_i, y_i, style_i = self.pairs[index * self.batch_size + b]
+            x_i, file_name, y_i = self.pairs[index * self.batch_size + b]
             x.append(x_i)
             y.append(y_i)
-            style.append(style_i)
+            style.append(self.style_inputs[file_name])
         return np.array(x), np.array(y), np.array(style)
 
 if __name__ == "__main__":
