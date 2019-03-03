@@ -25,7 +25,7 @@ def generate_data_arrs(file_path, slice_size_t=1536):
     console.log("Content shape", content.shape)
     console.log("Style shape", style.shape)
     # it's a lot of work to compute the x...
-    '''fundamental_mask = sst.extract_fundamental(amplitude)
+    fundamental_mask = sst.extract_fundamental(amplitude)
     #console.stats(fundamental_mask, "fundamental_mask")
     #console.stats(amplitude, "amplitude")
     fundamental_freqs, fundamental_amps = sst.extract_fundamental_freqs_amps(fundamental_mask, amplitude)
@@ -54,7 +54,7 @@ def generate_data_arrs(file_path, slice_size_t=1536):
     content_sibilants *= content.max() / content_sibilants.max()
 
     x_arr = np.dstack([np.mean(stylized,axis=2), np.mean(content_harmonics,axis=2), np.mean(content_sibilants, axis=2)])
-    y_arr = np.mean(content, axis=2)'''
+    y_arr = np.mean(content, axis=2)
     style_arr = np.mean(style, axis=2)
     return 0, 0, style_arr
     # return x_arr, y_arr, style_arr
@@ -71,9 +71,9 @@ def main(_):
         if file_path.endswith(".mp3"):
             processed_file_name = file_name.replace("mp3", "npy") # haha
             # todo: rewrite all this using pathlib
-            '''processed_file_path_x = PROCESSED_DATA_DIR + "/x/" + processed_file_name
+            processed_file_path_x = PROCESSED_DATA_DIR + "/x/" + processed_file_name
             processed_file_path_y = PROCESSED_DATA_DIR + "/y/" + processed_file_name
-            console.h1("Processing", file_path)'''
+            console.h1("Processing", file_path)
             processed_file_path_style = PROCESSED_DATA_DIR + "/style/" + processed_file_name
             x_arr, y_arr, style_arr = generate_data_arrs(file_path)
             # for debugging just save as images
@@ -81,10 +81,10 @@ def main(_):
             console.stats(y_arr, "y_arr")
             console.stats(style_arr, "style_arr")
             #ipdb.set_trace()
-            '''io.imsave(processed_file_path_x + ".jpg", x_arr / x_arr.max())
+            io.imsave(processed_file_path_x + ".jpg", x_arr / x_arr.max())
             io.imsave(processed_file_path_y + ".jpg", y_arr / y_arr.max())
             np.save(processed_file_path_x, x_arr) 
-            np.save(processed_file_path_y, y_arr) '''
+            np.save(processed_file_path_y, y_arr)
             np.save(processed_file_path_style, style_arr) 
         else:
             console.info("Skipping", file_path)
