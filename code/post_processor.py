@@ -50,7 +50,8 @@ class PostProcessor:
 
     def train_epoch(self, train, validation_data=None, test_file=None):
         history = self.model.fit_generator(
-            generator=train, validation_data=validation_data, use_multiprocessing=True, workers=6
+            generator=train, validation_data=validation_data, use_multiprocessing=True, workers=6,
+            steps_per_epoch=len(train), validation_steps=len(validation_data)
         )
         if test_file:
             self.denoise_from_file(test_file)
@@ -61,6 +62,10 @@ class PostProcessor:
         num_filters_dict = {
             "d0": 32,
             "d1": 32,
+            "d2": 64,
+            "d3": 64,
+            "d4": 128,
+            "d5": 128,
             "u0": 32,
             "u1": 32,
             "u2": 32,
@@ -78,6 +83,12 @@ class PostProcessor:
         def downsample_conv(num_filters=32):
             return base_conv(num_filters, 4, strides=2)
 
+        def downsample_axis_conv(num_filters=32):
+            return base_conv(num_filters, 4, strides=(1, 2))
+
+        def downsample_3_conv(num_filters=32):
+            return base_conv(num_filters, 4, strides=3)
+
         def frequency_conv(num_filters=8):
             """Aggregates over the frequency axis (0) by downsampling the time axis (1)"""
             return base_conv(num_filters, (1, 4), strides=(1, 2))
@@ -86,11 +97,40 @@ class PostProcessor:
             """Aggregates over the time axis (1) by downsampling the frequency axis (0)"""
             return base_conv(num_filters, (4, 1), strides=(2, 1))
 
-        # input
-        noisy = Input(shape=(None, None, 4), name="noisy")
-        conv = BatchNormalization()(noisy) # lazy
+        # style
+        style = Input(shape=(768, 1536, 1), name="style")
+        '''
+        style_conv = BatchNormalization()(style)
 
-        # downsampling
+        style_conv = static_conv(num_filters_dict["d0"])(style_conv)
+        style_conv = static_conv(num_filters_dict["d0"])(style_conv)
+        style_conv = BatchNormalization()(downsample_3_conv(num_filters_dict["d0"])(style_conv))
+        
+        style_conv = static_conv(num_filters_dict["d1"])(style_conv)
+        style_conv = static_conv(num_filters_dict["d1"])(style_conv)
+        style_conv = BatchNormalization()(downsample_axis_conv(num_filters_dict["d1"])(style_conv))
+
+        style_conv = static_conv(num_filters_dict["d2"])(style_conv)
+        style_conv = static_conv(num_filters_dict["d2"])(style_conv)
+        style_conv = BatchNormalization()(downsample_conv(num_filters_dict["d2"])(style_conv))
+
+        style_conv = static_conv(num_filters_dict["d3"])(style_conv)
+        style_conv = static_conv(num_filters_dict["d3"])(style_conv)
+        style_conv = BatchNormalization()(downsample_conv(num_filters_dict["d3"])(style_conv))
+
+        style_conv = static_conv(num_filters_dict["d4"])(style_conv)
+        style_conv = static_conv(num_filters_dict["d4"])(style_conv)
+        style_conv = BatchNormalization()(downsample_conv(num_filters_dict["d4"])(style_conv))
+
+        style_conv = static_conv(num_filters_dict["d5"])(style_conv)
+        style_conv = static_conv(num_filters_dict["d5"])(style_conv)
+        style_conv = BatchNormalization()(downsample_conv(num_filters_dict["d5"])(style_conv))
+        '''
+
+        # input
+        noisy = Input(shape=(64, 64, 4), name="noisy")
+        conv = BatchNormalization()(noisy) # lazy
+                # downsampling
         skip_a = conv
         conv = static_conv(num_filters_dict["d0"])(conv)
         #conv = Dropout(0.5)(conv)
@@ -104,6 +144,9 @@ class PostProcessor:
         conv = static_conv(num_filters_dict["d1"])(conv)
         #conv = Dropout(0.5)(conv)
         conv = BatchNormalization()(downsample_conv(num_filters_dict["d1"])(conv))
+
+        # concatenate in result from style
+        # conv = Concatenate()([conv, style_conv])
 
         # processing at 1/4x resolution
         conv = static_conv(num_filters_dict["u0"])(conv)
@@ -126,7 +169,7 @@ class PostProcessor:
 
         output = conv
 
-        self.model = Model(inputs=noisy, outputs=output)
+        self.model = Model(inputs=[noisy, style], outputs=output)
 
     def load_weights(self, weight_file_path):
         self.model.load_weights(weight_file_path)

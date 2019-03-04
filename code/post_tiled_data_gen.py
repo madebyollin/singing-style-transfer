@@ -21,7 +21,7 @@ class DataGenerator(keras.utils.Sequence):
                 source = np.load(self.in_path + "/x/" + file_name)
                 target = np.load(self.in_path + "/y/" + file_name)
                 style_input = np.load(self.in_path + "/style/" + file_name)
-                style_inputs[file_name] = style_input
+                self.style_inputs[file_name] = style_input[:768,:,np.newaxis]
                 coord_conv_slice = np.linspace(0, 1, source.shape[0])[:,np.newaxis]
                 coord_conv_channel = np.repeat(coord_conv_slice, source.shape[1], axis=1)
                 source = np.dstack([source, coord_conv_channel])
@@ -35,7 +35,7 @@ class DataGenerator(keras.utils.Sequence):
                         self.pairs.append([x, file_name, y])
         np.random.shuffle(self.pairs)
         console.log("Loaded", len(self.pairs), "pairs")
-        console.log("Shape of first pair is", self.pairs[0][0].shape, self.pairs[0][1].shape, self.pairs[0][2].shape)
+        console.log("Shape of first pair [", self.pairs[0][1], "] is", self.pairs[0][0].shape, self.pairs[0][2].shape)
     
     def on_epoch_end(self):
         np.random.shuffle(self.pairs)
@@ -48,12 +48,13 @@ class DataGenerator(keras.utils.Sequence):
         index %= max_index
         x = []
         y = []
+        style = []
         for b in range(self.batch_size):
             x_i, file_name, y_i = self.pairs[index * self.batch_size + b]
             x.append(x_i)
             y.append(y_i)
             style.append(self.style_inputs[file_name])
-        return np.array(x), np.array(y), np.array(style)
+        return [np.array(x), np.array(style)], np.array(y)
 
 if __name__ == "__main__":
     console.time("loading all data")
