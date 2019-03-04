@@ -99,7 +99,6 @@ class PostProcessor:
 
         # style
         style = Input(shape=(768, 1536, 1), name="style")
-        '''
         style_conv = BatchNormalization()(style)
 
         style_conv = static_conv(num_filters_dict["d0"])(style_conv)
@@ -125,7 +124,6 @@ class PostProcessor:
         style_conv = static_conv(num_filters_dict["d5"])(style_conv)
         style_conv = static_conv(num_filters_dict["d5"])(style_conv)
         style_conv = BatchNormalization()(downsample_conv(num_filters_dict["d5"])(style_conv))
-        '''
 
         # input
         noisy = Input(shape=(64, 64, 4), name="noisy")
