@@ -111,6 +111,7 @@ def get_heatmap(wav):
 
     # Stitch and upsample heatmaps into one final heatmap.
     stitched_heatmap = np.concatenate(heatmaps, axis=0)
+    stitched_heatmap = np.transpose(stitched_heatmap)
     return stitched_heatmap
 
 
