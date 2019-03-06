@@ -30,7 +30,6 @@ Package Requirements:
 **Important**: Tested only in Python2.7
 (It is to-be-determined whether this is actually a hard-requirement, see [#notes](#notes) for further investigative notes)
 
-
 - `tensorflow-gpu >= 1.8`
 - `numpy >= 1.11.1`
 - `librosa == 0.6.3`
@@ -44,5 +43,6 @@ Package Requirements:
 
 ## Notes
 
-- `functools32==3.2.3.post2` Seems to be used by something,
+- It seems as though the `tensorpack` module is compatible with both Python2 and Python3,
+  but the pretrained models seem contingent on Python2 API.
 
