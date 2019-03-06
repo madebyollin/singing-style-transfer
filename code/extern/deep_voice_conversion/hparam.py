@@ -53,7 +53,9 @@ class Hparam(Dotdict):
     __setattr__ = Dotdict.__setitem__
     __delattr__ = Dotdict.__delitem__
 
-    def set_hparam_yaml(self, case, default_file='hparams/default.yaml', user_file='hparams/hparams.yaml'):
+    def set_hparam_yaml(self, case,
+            default_file='extern/deep_voice_conversion/hparams/default.yaml',
+            user_file='extern/deep_voice_conversion/hparams/hparams.yaml'):
         default_hp = load_hparam(default_file)
         user_hp = load_hparam(user_file)
         hp_dict = Dotdict(merge_dict(user_hp[case], default_hp) if case in user_hp else default_hp)

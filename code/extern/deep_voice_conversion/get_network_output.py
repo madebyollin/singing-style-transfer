@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 import os
 
@@ -14,13 +14,14 @@ from tensorpack.tfutils.sessinit import ChainInit
 from tensorpack.tfutils.sessinit import SaverRestore
 
 
-from hparam import hparam as hp
-from models import Net1
-import data_load
+from extern.deep_voice_conversion import data_load
+from extern.deep_voice_conversion.hparam import hparam as hp
+from extern.deep_voice_conversion.models import Net1
+
 
 hp.set_hparam_yaml("convert")
 
-CKPT_DIR = "pretrained_model/train1"
+CKPT_DIR = "extern/deep_voice_conversion/pretrained_model/train1"
 
 def init_predictor(ckpt_dir):
     """ Initializes an OfflinePredictor for the 'Net1' Phoneme classifier, given a directory of tf-checkpoints.
@@ -41,7 +42,9 @@ def init_predictor(ckpt_dir):
     predictor = OfflinePredictor(pred_conf)
     return predictor
 
-def get_network_output(wav, ckpt_dir=CKPT_DIR, out_path_fmt="outputs/test2_{:04d}_{:04d}.png"):
+def get_network_output(wav,
+        ckpt_dir=CKPT_DIR,
+        out_path_fmt="extern/deep_voice_conversion/outputs/test2_{:04d}_{:04d}.png"):
     """ Computes PPGs for a given loaded wav audio.
     This splits the input wav file into two-second batches and runs each through the Phoneme classifier.
     For each batch, this outputs each ppg to the given output_path.
@@ -103,22 +106,23 @@ def get_network_output(wav, ckpt_dir=CKPT_DIR, out_path_fmt="outputs/test2_{:04d
 
 def get_heatmap(wav):
     # Get non-stitched and un-upsampled heatmaps.
+    # [n, [t, v]]
     heatmaps = get_network_output(wav)
 
     # Stitch and upsample heatmaps into one final heatmap.
-    stitched_heatmap = np.concatenate(heatmaps, axis=1)
+    stitched_heatmap = np.concatenate(heatmaps, axis=0)
     return stitched_heatmap
 
 
 if __name__ == "__main__":
     # REVIEW josephz: This should really be a cmd_line parameter.
-    wav_file = "test_data/reference_stylized.wav"
+    wav_file = "extern/deep_voice_conversion/test_data/reference_stylized.wav"
     assert os.path.isfile(wav_file)
     wav, _ = librosa.load(wav_file, sr=hp.default.sr)
 
     stitched_heatmap = get_heatmap(wav)
     im = Image.fromarray(stitched_heatmap.astype(np.uint8))
-    im.save("outputs/heatmap.png")
+    im.save("extern/deep_voice_conversion/outputs/heatmap.png")
 
 
 

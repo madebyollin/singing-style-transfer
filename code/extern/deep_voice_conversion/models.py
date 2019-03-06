@@ -7,10 +7,10 @@ from tensorpack.tfutils import (
     get_current_tower_context, optimizer, gradproc)
 from tensorpack.tfutils.scope_utils import auto_reuse_variable_scope
 
-import tensorpack_extension
-from data_load import phns
-from hparam import hparam as hp
-from modules import prenet, cbhg, normalize
+import extern.deep_voice_conversion.tensorpack_extension as tensorpack_extension
+from extern.deep_voice_conversion.data_load import phns
+from extern.deep_voice_conversion.hparam import hparam as hp
+from extern.deep_voice_conversion.modules import prenet, cbhg, normalize
 
 
 class Net1(ModelDesc):

@@ -28,8 +28,8 @@ Voice Conversion with Non-Parallel Data
 Package Requirements:
 
 **Important**: Tested only in Python2.7
+(It is to-be-determined whether this is actually a hard-requirement, see [#notes](#notes) for further investigative notes)
 
-(It is to-be-determined whether this is actually a hard-requirement)
 
 - `tensorflow-gpu >= 1.8`
 - `numpy >= 1.11.1`
@@ -42,4 +42,7 @@ Package Requirements:
 - `tqdm`
 - `git+https://github.com/wookayin/tensorflow-plot.git@master`
 
+## Notes
+
+- `functools32==3.2.3.post2` Seems to be used by something,
 

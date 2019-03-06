@@ -113,7 +113,7 @@ def get_mfccs_and_phones(wav_file, trim=False, random_crop=True):
     return mfccs, phns
 
 
-def get_mfccs_and_spectrogram(wav_file=None, wav=None, trim=True, random_crop=False):
+def get_mfccs_and_spectrogram(wav_file=None, wav=None, trim=False, random_crop=False):
     '''This is applied in `train2`, `test2` or `convert` phase.
     '''
     # Load
