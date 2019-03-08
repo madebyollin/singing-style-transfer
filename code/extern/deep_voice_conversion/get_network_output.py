@@ -65,10 +65,9 @@ def get_network_output(wav,
 
     # Split wav into 2-second clips.
     length = hp.default.sr * hp.default.duration
-    # num_splits = int(wav.shape[0] / length)
-    splits = list(range(0, wav.shape[0], length))
-    num_splits = len(splits)
+    splits = list(range(length, wav.shape[0], length))
     wavs = np.array_split(wav, splits, axis=0)
+
     print("Original wav length is", len(wav), "with sample rate", hp.default.sr)
     print("Length of wavs is ", [len(x) for x in wavs])
 
@@ -78,23 +77,16 @@ def get_network_output(wav,
 
     # inp.shape: [b=num_splits, time/length, feats]
     # ppgs: (N, T, V); 
-    # you would think this would work, but
-    # preds = predictor(mfcc_batch)
-    # lets do this instead
-    ppgs = []
-    for mfcc in mfcc_batch:
-        mfcc_minibatch = np.array([mfcc])
-        # print("Running on mfcc of shape", mfcc_minibatch.shape)
-        ppg = predictor(mfcc_minibatch)[0][0]
-        # print("Got ppg of shape", ppg.shape)
-        ppgs.append(ppg)
+    preds = predictor(mfcc_batch)
+    assert len(preds) == 1
+    ppgs = preds[0]
     print("Length of ppgs is ", [len(x) for x in ppgs])
 
     # Output each ppg.
     heatmaps = []
     for i, heatmap in enumerate(ppgs):
         assert 0 <= np.min(heatmap) <= np.max(heatmap) <= 1.0
-        out_path = out_path_fmt.format(i, num_splits-1)
+        out_path = out_path_fmt.format(i, len(splits)-1)
         print("Writing heatmap '{}' of shape '{}' to '{}'".format(i, heatmap.shape, out_path))
 
         # REVIEW josephz: This really should be changed to the PIL Image.fromarray(...) -> convert -> save.
