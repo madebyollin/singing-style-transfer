@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
 import os
 
@@ -17,10 +18,6 @@ import data_load as data_load
 import hparam as hparam
 hp = hparam.hparam
 from models import Net1
-
-# from extern.deep_voice_conversion import data_load
-# from extern.deep_voice_conversion.hparam import hparam as hp
-
 
 hp.set_hparam_yaml("convert")
 
@@ -68,17 +65,30 @@ def get_network_output(wav,
 
     # Split wav into 2-second clips.
     length = hp.default.sr * hp.default.duration
-    num_splits = int(wav.shape[0] / length)
-    wavs = np.array_split(wav, num_splits, axis=0)
+    # num_splits = int(wav.shape[0] / length)
+    splits = list(range(0, wav.shape[0], length))
+    num_splits = len(splits)
+    wavs = np.array_split(wav, splits, axis=0)
+    print("Original wav length is", len(wav), "with sample rate", hp.default.sr)
+    print("Length of wavs is ", [len(x) for x in wavs])
 
     # mfcc_batch: [b=num_splits, time/lenghth, feats]
     mfcc_batch = np.array([data_load.get_mfccs_and_spectrogram(wav=wav_)[0] for wav_ in wavs])
+    print("Length of mfccs is ", [len(x) for x in mfcc_batch])
 
     # inp.shape: [b=num_splits, time/length, feats]
-    # ppgs: (N, T, V); preds: (N, T); logits: (N, T, V)
-    preds = predictor(mfcc_batch)
-    assert len(preds) == 1
-    ppgs = preds[0]
+    # ppgs: (N, T, V); 
+    # you would think this would work, but
+    # preds = predictor(mfcc_batch)
+    # lets do this instead
+    ppgs = []
+    for mfcc in mfcc_batch:
+        mfcc_minibatch = np.array([mfcc])
+        # print("Running on mfcc of shape", mfcc_minibatch.shape)
+        ppg = predictor(mfcc_minibatch)[0][0]
+        # print("Got ppg of shape", ppg.shape)
+        ppgs.append(ppg)
+    print("Length of ppgs is ", [len(x) for x in ppgs])
 
     # Output each ppg.
     heatmaps = []
@@ -114,6 +124,7 @@ def get_heatmap(wav):
 
     # Stitch and upsample heatmaps into one final heatmap.
     stitched_heatmap = np.concatenate(heatmaps, axis=0)
+    print("stitched heatmap shape", stitched_heatmap.shape)
     stitched_heatmap = np.transpose(stitched_heatmap)
     return stitched_heatmap
 

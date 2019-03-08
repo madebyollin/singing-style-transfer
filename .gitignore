@@ -42,3 +42,4 @@ code/extern/deep_voice_conversion/pretrained_model
 *.tar.*
 *.h5
 !weights.h5
+extern/deep_voice_conversion/outputs/
