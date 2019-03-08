@@ -13,10 +13,13 @@ from tensorpack.predict.config import PredictConfig
 from tensorpack.tfutils.sessinit import ChainInit
 from tensorpack.tfutils.sessinit import SaverRestore
 
+import data_load as data_load
+import hparam as hparam
+hp = hparam.hparam
+from models import Net1
 
-from extern.deep_voice_conversion import data_load
-from extern.deep_voice_conversion.hparam import hparam as hp
-from extern.deep_voice_conversion.models import Net1
+# from extern.deep_voice_conversion import data_load
+# from extern.deep_voice_conversion.hparam import hparam as hp
 
 
 hp.set_hparam_yaml("convert")
@@ -124,7 +127,3 @@ if __name__ == "__main__":
     stitched_heatmap = get_heatmap(wav)
     im = Image.fromarray(stitched_heatmap.astype(np.uint8))
     im.save("extern/deep_voice_conversion/outputs/heatmap.png")
-
-
-
-
