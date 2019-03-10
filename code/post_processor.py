@@ -127,7 +127,7 @@ class PostProcessor:
         style_conv = BatchNormalization()(downsample_conv(num_filters_dict["d5"])(style_conv))
 
         # input
-        noisy = Input(shape=(64, 64, 4), name="noisy")
+        noisy = Input(shape=(None, None, 4), name="noisy")
         conv = BatchNormalization()(noisy) # lazy
                 # downsampling
         skip_a = conv
@@ -168,7 +168,7 @@ class PostProcessor:
 
         output = conv
 
-        self.model = Model(inputs=[noisy, style], outputs=output)
+        self.model = Model(inputs=noisy, outputs=output)
 
     def load_weights(self, weight_file_path):
         self.model.load_weights(weight_file_path)

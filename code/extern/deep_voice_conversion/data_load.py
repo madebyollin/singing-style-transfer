@@ -80,31 +80,32 @@ def get_mfccs_and_phones(wav_file, trim=False, random_crop=True):
     num_timesteps = mfccs.shape[0]
 
     # phones (targets)
-    phn_file = wav_file.replace("WAV.wav", "PHN").replace("wav", "PHN")
-    phn2idx, idx2phn = load_vocab()
+    # phn_file = wav_file.replace("WAV.wav", "PHN").replace("wav", "PHN")
+    # phn2idx, idx2phn = load_vocab()
     phns = np.zeros(shape=(num_timesteps,))
     bnd_list = []
-    for line in open(phn_file, 'r').read().splitlines():
-        start_point, _, phn = line.split()
-        bnd = int(start_point) // hp.default.hop_length
-        phns[bnd:] = phn2idx[phn]
-        bnd_list.append(bnd)
+    # for line in open(phn_file, 'r').read().splitlines():
+    #     start_point, _, phn = line.split()
+    #     bnd = int(start_point) // hp.default.hop_length
+    #     phns[bnd:] = phn2idx[phn]
+    #     bnd_list.append(bnd)
 
     # Trim
-    if trim:
-        start, end = bnd_list[1], bnd_list[-1]
-        mfccs = mfccs[start:end]
-        phns = phns[start:end]
-        assert (len(mfccs) == len(phns))
+    # if trim:
+    #     start, end = bnd_list[1], bnd_list[-1]
+    #     mfccs = mfccs[start:end]
+    #     phns = phns[start:end]
+    #     assert (len(mfccs) == len(phns))
 
     # Random crop
+    # Ollin: aaah + 1
     n_timesteps = (hp.default.duration * hp.default.sr) // hp.default.hop_length + 1
-    if random_crop:
-        start = np.random.choice(range(np.maximum(1, len(mfccs) - n_timesteps)), 1)[0]
-        end = start + n_timesteps
-        mfccs = mfccs[start:end]
-        phns = phns[start:end]
-        assert (len(mfccs) == len(phns))
+    # if random_crop:
+    #     start = np.random.choice(range(np.maximum(1, len(mfccs) - n_timesteps)), 1)[0]
+    #     end = start + n_timesteps
+    #     mfccs = mfccs[start:end]
+    #     phns = phns[start:end]
+    #     assert (len(mfccs) == len(phns))
 
     # Padding or crop
     mfccs = librosa.util.fix_length(mfccs, n_timesteps, axis=0)

@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import os
+import sys
 
 import librosa
 import scipy
@@ -56,9 +57,9 @@ def get_network_output(wav,
     assert os.path.isdir(ckpt_dir)
 
     # Make output directory.
-    out_dir = os.path.dirname(out_path_fmt)
-    if not os.path.isdir(out_dir):
-        os.mkdir(out_dir)
+    # out_dir = os.path.dirname(out_path_fmt)
+    # if not os.path.isdir(out_dir):
+        # os.mkdir(out_dir)
 
     # Initialize Offline Predictor.
     predictor = init_predictor(ckpt_dir)
@@ -100,10 +101,10 @@ def get_network_output(wav,
 
         # Convert [0, 1] heatmap to [0, 255].
         heatmap = 255 * heatmap
-        im = Image.fromarray(heatmap.astype(np.uint8))
+        # im = Image.fromarray(heatmap.astype(np.uint8))
 
         # Save the image to disk.
-        im.save(out_path)
+        # im.save(out_path)
 
         # Accumulate heatmap.
         heatmaps.append(heatmap)
@@ -112,21 +113,31 @@ def get_network_output(wav,
 def get_heatmap(wav):
     # Get non-stitched and un-upsampled heatmaps.
     # [n, [t, v]]
+    num_samples = len(wav)
+    num_sec = num_samples / float(hp.default.sr)
+    target_size = int(num_sec * 200.5)
     heatmaps = get_network_output(wav)
 
     # Stitch and upsample heatmaps into one final heatmap.
     stitched_heatmap = np.concatenate(heatmaps, axis=0)
-    print("stitched heatmap shape", stitched_heatmap.shape)
+    # print("stitched heatmap shape", stitched_heatmap.shape)
     stitched_heatmap = np.transpose(stitched_heatmap)
+    # crop
+    stitched_heatmap = stitched_heatmap[:,:target_size]
     return stitched_heatmap
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("please run as", sys.argv[0], "audio_file.{mp3,wav} output_file.npy")
+        sys.exit(1)
     # REVIEW josephz: This should really be a cmd_line parameter.
-    wav_file = "extern/deep_voice_conversion/test_data/reference_stylized.wav"
+    wav_file, output_file = sys.argv[1:]
     assert os.path.isfile(wav_file)
     wav, _ = librosa.load(wav_file, sr=hp.default.sr)
 
     stitched_heatmap = get_heatmap(wav)
-    im = Image.fromarray(stitched_heatmap.astype(np.uint8))
-    im.save("extern/deep_voice_conversion/outputs/heatmap.png")
+    np.save(output_file, stitched_heatmap)
+    print("Saved featurizer output to", output_file)
+    # im = Image.fromarray(stitched_heatmap.astype(np.uint8))
+    # im.save("extern/deep_voice_conversion/outputs/heatmap.png")
