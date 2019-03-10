@@ -2,6 +2,7 @@
 
 import os
 import argparse
+import cv2
 import numpy as np
 from keras.layers import (
     Input,
@@ -214,7 +215,11 @@ def postprocess_y(y, target_shape):
     # fix shape
     output = np.zeros(target_shape)
     output[: y.shape[0], :, :] = y[:, : target_shape[1], :]
-    return output[:,:,:1]
+    output = output[:,:,:1]
+    # apply unsharp mask
+    # output_blurred = cv2.GaussianBlur(output, (5,5), 1)
+    # output_sharp = cv2.addWeighted(output, 1.5, output_blurred, -0.5, 0, output)
+    return output
 
 
 def main():

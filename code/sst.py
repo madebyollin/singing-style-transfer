@@ -328,9 +328,9 @@ def compute_nnf(content_features, style_features, iterations=10, seed_nnf=None):
                 s = t + off
                 # penalize changing style source-regions in the middle of a loud part of the content
                 # probably shouldn't be necessary
-                #consistency_penalty = (
-                #    np.max(content_features[:, t]) * abs(nnf[t - 1] - off) / num_timesteps_style
-                #)
+                # consistency_penalty = (
+                # np.max(content_features[:, t]) * abs(nnf[t - 1] - off) / num_timesteps_style
+                # )
                 consistency_penalty = 0
                 offset_dist = distance(t, s) + consistency_penalty
                 if best_offset is None or offset_dist < best_offset_dist:

@@ -83,7 +83,7 @@ def mono_amplitude_to_audio(channel_amplitude, fft_window_size, phase_iterations
 
         # at each step, create a new spectrogram using the current audio
         reconstruction = librosa.stft(audio, fft_window_size)
-        amplitude = np.abs(reconstruction)
+        # amplitude = np.abs(reconstruction)
         phase = np.angle(reconstruction)
     return audio
 
