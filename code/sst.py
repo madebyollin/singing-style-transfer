@@ -9,8 +9,8 @@ from scipy.signal import convolve2d
 import conversion
 import console
 import cv2
-# import ipdb
-from ds_feature_extractor import get_feature_array
+import ipdb
+from dvc_feature_extractor import get_feature_array
 import matplotlib.pyplot as plt
 from extern.DeepSpeech.util.config import initialize_globals 
 from extern.DeepSpeech.util.flags import FLAGS, create_flags
@@ -328,9 +328,9 @@ def compute_nnf(content_features, style_features, iterations=10, seed_nnf=None):
                 s = t + off
                 # penalize changing style source-regions in the middle of a loud part of the content
                 # probably shouldn't be necessary
-                #consistency_penalty = (
-                #    np.max(content_features[:, t]) * abs(nnf[t - 1] - off) / num_timesteps_style
-                #)
+                # consistency_penalty = (
+                # np.max(content_features[:, t]) * abs(nnf[t - 1] - off) / num_timesteps_style
+                # )
                 consistency_penalty = 0
                 offset_dist = distance(t, s) + consistency_penalty
                 if best_offset is None or offset_dist < best_offset_dist:
@@ -478,16 +478,18 @@ def stylize(content, style, content_phase, style_phase, content_path, style_path
         style_features = compute_features(style)
     if not use_spectral_features:
         # neural features
-        content_features = get_feature_array(content_path) / 5
+        content_features = get_feature_array(content_path)
+        content_features /= content_features.max()
         #console.stats(content_features, "content features")
         # conversion.image_to_file(content_features[:,:,np.newaxis], "content_features.png")
         #console.debug(content.shape, "content.shape")
-        content_features = resize(content_features, (2048, content.shape[1]))
-        style_features = get_feature_array(style_path) / 5
+        content_features = resize(content_features, (content_features.shape[0], content.shape[1]))
+        style_features = get_feature_array(style_path)
+        style_features /= style_features.max()
         #console.stats(style_features, "style features")
         #console.debug(style.shape, "style.shape")
         # conversion.image_to_file(style_features[:,:,np.newaxis], "style_features.png")
-        style_features = resize(style_features, (2048, style.shape[1]))
+        style_features = resize(style_features, (style_features.shape[0], style.shape[1]))
 
     # Harmonic recovery
     content_harmonics = fundamental_to_harmonics(
@@ -520,7 +522,7 @@ def stylize(content, style, content_phase, style_phase, content_path, style_path
             style_fundamental_freqs,
             content_features,
             style_features,
-            iterations=48
+            iterations=96
         )
     console.timeEnd("patch match")
     console.log("normal stylized has shape", stylized.shape)
@@ -533,7 +535,7 @@ def stylize(content, style, content_phase, style_phase, content_path, style_path
 
 def main(_):
     # REVIEW josephz: This paradigm was copied from inference-hack.py
-    initialize_globals()
+    # initialize_globals()
 
     sample_dir = "sample"
     # sample_names = ["new_test"]
@@ -587,9 +589,9 @@ def main(_):
 
 if __name__ == "__main__":
     create_flags()
-    FLAGS.one_shot_infer = "/tmp/input.wav" 
-    FLAGS.checkpoint_dir = "extern/DeepSpeech/deepspeech-0.4.1-checkpoint/" 
-    FLAGS.alphabet_config_path = "extern/DeepSpeech/data/alphabet.txt"
+    # FLAGS.one_shot_infer = "/tmp/input.wav" 
+    # FLAGS.checkpoint_dir = "extern/DeepSpeech/deepspeech-0.4.1-checkpoint/" 
+    # FLAGS.alphabet_config_path = "extern/DeepSpeech/data/alphabet.txt"
 
     tf.app.run(main)
 

@@ -6,8 +6,8 @@
         - [x] **[andrew / joseph]** Figure out why DeepSpeech features are incorrectly sized and how to properly correct for this, rather than just blindly rescaling the features bilinearly :P - **EDIT:** Turns out we're doing this correctly! The only difference is our FFT window sizes–we're using 1536 samples, but DS is using 0.02s ~= 1765 samples. The DS network produces features of the same size as the input, so we just need to stretch the time axis.
         - [x] **[andrew / joseph]** Clean up DeepSpeech feature-retrieval code to be faster and less hacky (shouldn't need to write to temp files, shouldn't need to have python calling a shell script calling python, should ideally be able to batch multiple inputs)
         - [x] **[ollin]** Implement multi-scale refinement for PatchMatch and see if it makes stuff work better.
-        - [ ] **[ollin]** Make PatchMatch faster if possible, right now it takes too long with high iteration counts (~20).
         - [x] **[??]** Test if using pitch-normalized inputs improves DS feature matching results, and, if so, switch to doing that. **EDIT:** It doesn't seem to substantially improve it, although it also doesn't hurt–it's hard to say conclusively.
+        - [x] **[ollin]** Make PatchMatch faster if possible, right now it takes too long with high iteration counts (~20).
     - [ ] **[All]** Implement initial draft of post-processing networks (see [notes/post_processing_net.md](notes/post_processing_net.md) in the repo)
         - [x] **[josephz/andrew]** Implement model architecture in Keras.
             - Assume that the data is already in `x/0001.npy`, `y/0001.npy`

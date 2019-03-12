@@ -2,6 +2,7 @@
 
 # Python
 **/__pycache__
+*.pyc
 
 ## venv
 lib/
@@ -37,6 +38,9 @@ data/
 !code/extern/DeepSpeech/data/
 *.jpg
 code/extern/DeepSpeech/deepspeech-0.4.1-checkpoint
+code/extern/deep_voice_conversion/pretrained_model
 *.tar.*
 *.h5
 !weights.h5
+extern/deep_voice_conversion/outputs/
+*.npy
