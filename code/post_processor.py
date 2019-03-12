@@ -86,6 +86,12 @@ class PostProcessor:
         def downsample_axis_conv(num_filters=32):
             return base_conv(num_filters, 4, strides=(1, 2))
 
+        def downsample_time_axis_conv(num_filters=32):
+            return base_conv(num_filters, 4, strides=(2, 1))
+
+        def downsample_3_time_axis_conv(num_filters=32):
+            return base_conv(num_filters, 4, strides=(3, 1))
+
         def downsample_3_conv(num_filters=32):
             return base_conv(num_filters, 4, strides=3)
 
@@ -98,32 +104,38 @@ class PostProcessor:
             return base_conv(num_filters, (4, 1), strides=(2, 1))
 
         # style
-        style = Input(shape=(768, 1536, 1), name="style")
+        style = Input(shape=(768, 64, 1), name="style")
         style_conv = BatchNormalization()(style)
 
         style_conv = static_conv(num_filters_dict["d0"])(style_conv)
         style_conv = static_conv(num_filters_dict["d0"])(style_conv)
-        style_conv = BatchNormalization()(downsample_3_conv(num_filters_dict["d0"])(style_conv))
+        style_conv = BatchNormalization()(downsample_3_time_axis_conv(num_filters_dict["d0"])(style_conv))
+        # (256,64,1)
         
         style_conv = static_conv(num_filters_dict["d1"])(style_conv)
         style_conv = static_conv(num_filters_dict["d1"])(style_conv)
-        style_conv = BatchNormalization()(downsample_axis_conv(num_filters_dict["d1"])(style_conv))
+        style_conv = BatchNormalization()(downsample_time_axis_conv(num_filters_dict["d1"])(style_conv))
+        # (128,64,1)
 
         style_conv = static_conv(num_filters_dict["d2"])(style_conv)
         style_conv = static_conv(num_filters_dict["d2"])(style_conv)
-        style_conv = BatchNormalization()(downsample_conv(num_filters_dict["d2"])(style_conv))
+        style_conv = BatchNormalization()(downsample_time_axis_conv(num_filters_dict["d2"])(style_conv))
+        # (64,64,1)
 
         style_conv = static_conv(num_filters_dict["d3"])(style_conv)
         style_conv = static_conv(num_filters_dict["d3"])(style_conv)
         style_conv = BatchNormalization()(downsample_conv(num_filters_dict["d3"])(style_conv))
+        # (32,32,1)
 
         style_conv = static_conv(num_filters_dict["d4"])(style_conv)
         style_conv = static_conv(num_filters_dict["d4"])(style_conv)
         style_conv = BatchNormalization()(downsample_conv(num_filters_dict["d4"])(style_conv))
+        # (16,16,1)
 
-        style_conv = static_conv(num_filters_dict["d5"])(style_conv)
+        '''style_conv = static_conv(num_filters_dict["d5"])(style_conv)
         style_conv = static_conv(num_filters_dict["d5"])(style_conv)
         style_conv = BatchNormalization()(downsample_conv(num_filters_dict["d5"])(style_conv))
+        # (16,16,1)'''
 
         # input
         noisy = Input(shape=(64, 64, 4), name="noisy")
@@ -144,7 +156,7 @@ class PostProcessor:
         conv = BatchNormalization()(downsample_conv(num_filters_dict["d1"])(conv))
 
         # concatenate in result from style
-        # conv = Concatenate()([conv, style_conv])
+        conv = Concatenate()([conv, style_conv])
 
         # processing at 1/4x resolution
         conv = static_conv(num_filters_dict["u0"])(conv)
@@ -168,6 +180,7 @@ class PostProcessor:
         output = conv
 
         self.model = Model(inputs=[noisy, style], outputs=output)
+        self.model.summary()
 
     def load_weights(self, weight_file_path):
         self.model.load_weights(weight_file_path)

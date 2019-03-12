@@ -21,6 +21,7 @@ def generate_data_arrs(file_path, slice_size_t=1536):
     # clipping only the first part to minimize "easy" repeated audio
     content = amplitude[:,:slice_size_t]
     style   = amplitude[:,slice_size_t:2*slice_size_t]  
+    freq_rang = [np.min(content, 1), np.max(content, 1)]
 
     console.log("Content shape", content.shape)
     console.log("Style shape", style.shape)
