@@ -44,3 +44,6 @@ code/extern/deep_voice_conversion/pretrained_model
 !weights.h5
 extern/deep_voice_conversion/outputs/
 *.npy
+
+# Whitelist web
+!transfer/*.png
